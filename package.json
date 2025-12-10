@@ -1,0 +1,23 @@
+{
+  "name": "collector-shop-poc",
+  "version": "1.0.0",
+  "description": "POC Collector.shop - Plateforme de vente d'objets de collection",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "test": "npm run test --workspaces",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}
