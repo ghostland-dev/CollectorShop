@@ -34,6 +34,7 @@ export function CreateAnnouncementPage() {
       showSuccess('Annonce créée avec succès !');
       navigate('/my-announcements');
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       let message = 'Erreur lors de la création';
       if (error.response?.data) {
@@ -45,6 +46,7 @@ export function CreateAnnouncementPage() {
           }, 2000);
         } else if (error.response.data.details && Array.isArray(error.response.data.details)) {
           // Erreurs de validation Zod
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const zodErrors = error.response.data.details.map((d: any) => `${d.path.join('.')}: ${d.message}`).join(', ');
           message = `Erreurs de validation: ${zodErrors}`;
         } else {
@@ -54,6 +56,7 @@ export function CreateAnnouncementPage() {
       showError(message);
       if (error.response?.data?.details) {
         const fieldErrors: Record<string, string> = {};
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         error.response.data.details.forEach((err: any) => {
           if (err.path && err.path[0]) {
             fieldErrors[err.path[0].toString()] = err.message;

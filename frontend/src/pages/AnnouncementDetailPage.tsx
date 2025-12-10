@@ -132,10 +132,9 @@ function getErrorMessage(error: unknown): string {
 }
 
 // Helper component for management actions
-function ManagementActions({ canManage, isAdmin, announcementId, announcementStatus, onEdit, onDelete, isDeleting }: {
+function ManagementActions({ canManage, isAdmin, announcementStatus, onEdit, onDelete, isDeleting }: {
   canManage: boolean;
   isAdmin: boolean;
-  announcementId: string;
   announcementStatus: string;
   onEdit: () => void;
   onDelete: () => void;
@@ -279,7 +278,6 @@ export function AnnouncementDetailPage() {
           <ManagementActions
             canManage={canManage}
             isAdmin={isAdmin}
-            announcementId={id!}
             announcementStatus={announcement.status}
             onEdit={() => navigate(`/announcements/${id}/edit`)}
             onDelete={handleDelete}

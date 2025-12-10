@@ -170,7 +170,7 @@ function CartSummary({ items, isAuthenticated, processingCount, onBuyAll, onLogi
 export function CartPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
-  const { items, removeItem, clearCart, getTotal } = useCartStore();
+  const { items, removeItem, clearCart } = useCartStore();
   const { showSuccess, showError } = useNotifications();
   const [processingItems, setProcessingItems] = useState<Set<string>>(new Set());
 

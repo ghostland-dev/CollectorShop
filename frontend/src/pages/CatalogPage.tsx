@@ -88,7 +88,7 @@ function SearchFilters({ search, category, onSearchChange, onCategoryChange, onC
 
 // Helper component for catalog content
 function CatalogContent({ data, isLoading, error }: {
-  data: { announcements: unknown[] } | undefined;
+  data: { announcements: Array<{ id: string }> } | undefined;
   isLoading: boolean;
   error: Error | null;
 }) {
@@ -119,7 +119,7 @@ function CatalogContent({ data, isLoading, error }: {
 
   return (
     <Grid container spacing={3}>
-      {data?.announcements.map((announcement: { id: string }) => (
+      {data?.announcements.map((announcement) => (
         <Grid item xs={12} sm={6} md={4} key={announcement.id}>
           <AnnouncementCard announcement={announcement as Parameters<typeof AnnouncementCard>[0]['announcement']} />
         </Grid>

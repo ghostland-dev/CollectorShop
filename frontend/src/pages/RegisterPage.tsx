@@ -36,6 +36,7 @@ export function RegisterPage() {
       showSuccess('Inscription réussie ! Bienvenue sur Collector.shop');
       navigate('/');
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       const message = error.response?.data?.error || error.response?.data?.message || 'Erreur lors de l\'inscription';
       showError(message);

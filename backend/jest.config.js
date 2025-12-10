@@ -14,5 +14,6 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  moduleFileExtensions: ['js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'json', 'node', 'd.ts'],
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
 };

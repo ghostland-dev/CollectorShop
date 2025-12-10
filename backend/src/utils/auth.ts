@@ -22,12 +22,14 @@ export const comparePassword = async (password: string, hash: string): Promise<b
 };
 
 export const generateAccessToken = (payload: JwtPayload): string => {
-  const options: SignOptions = { expiresIn: JWT_EXPIRES_IN };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const options: SignOptions = { expiresIn: JWT_EXPIRES_IN as any };
   return jwt.sign(payload, JWT_SECRET, options);
 };
 
 export const generateRefreshToken = (payload: JwtPayload): string => {
-  const options: SignOptions = { expiresIn: JWT_REFRESH_EXPIRES_IN };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const options: SignOptions = { expiresIn: JWT_REFRESH_EXPIRES_IN as any };
   return jwt.sign(payload, JWT_REFRESH_SECRET, options);
 };
 

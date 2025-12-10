@@ -152,7 +152,7 @@ export function MyAnnouncementsPage() {
 
 // Helper component for single announcement card in grid
 function AnnouncementGridCard({ announcement, isAdmin, navigate, onDeleteClick, deleteMutation }: {
-  announcement: { id: string; images?: string[]; title: string; description: string; price: number; status: string; category?: string; seller?: { firstName: string; lastName: string; email: string } };
+  announcement: { id: string; images?: string[]; title: string; description: string; price: number; status: string; category?: string; seller?: { firstName?: string; lastName?: string; email: string } };
   isAdmin: boolean;
   navigate: (path: string) => void;
   onDeleteClick: (id: string) => void;
@@ -210,7 +210,7 @@ function AnnouncementGridCard({ announcement, isAdmin, navigate, onDeleteClick, 
           )}
           {isAdmin && announcement.seller && (
             <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              Vendeur: {announcement.seller.firstName} {announcement.seller.lastName} ({announcement.seller.email})
+              Vendeur: {announcement.seller.firstName || ''} {announcement.seller.lastName || ''} ({announcement.seller.email})
             </Typography>
           )}
         </CardContent>
@@ -250,7 +250,7 @@ function AnnouncementGridCard({ announcement, isAdmin, navigate, onDeleteClick, 
 
 // Helper component for announcements grid
 function AnnouncementsGrid({ announcements, isAdmin, navigate, onDeleteClick, deleteMutation }: {
-  announcements: Array<{ id: string; images?: string[]; title: string; description: string; price: number; status: string; category?: string; seller?: { firstName: string; lastName: string; email: string } }>;
+  announcements: Array<{ id: string; images?: string[]; title: string; description: string; price: number; status: string; category?: string; seller?: { firstName?: string; lastName?: string; email: string } }>;
   isAdmin: boolean;
   navigate: (path: string) => void;
   onDeleteClick: (id: string) => void;

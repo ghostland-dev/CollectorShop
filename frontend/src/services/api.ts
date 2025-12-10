@@ -82,8 +82,11 @@ class ApiClient {
   }
 
   private queueRequest(originalRequest: InternalAxiosRequestConfig & { _retry?: boolean }): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-      this.failedQueue.push({ resolve, reject });
+    return new Promise<string>((resolve, reject) => {
+      this.failedQueue.push({ 
+        resolve: (value?: string) => resolve(value || ''), 
+        reject 
+      });
     })
       .then((token: string) => {
         originalRequest.headers.Authorization = `Bearer ${token}`;
