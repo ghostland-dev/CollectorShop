@@ -49,7 +49,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
     const token = authHeader.substring(7);
     const payload = verifyToken(token);
     
-    (req as any).user = payload;
+    req.user = payload;
     next();
   } catch (error) {
     res.status(401).json({ error: 'Token invalide ou expiré' });
@@ -59,7 +59,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 // Middleware d'autorisation RBAC
 export const authorize = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const user = (req as any).user as JwtPayload;
+    const user = req.user;
     
     if (!user) {
       res.status(401).json({ error: 'Non authentifié' });

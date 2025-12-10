@@ -3,6 +3,7 @@ import multer from 'multer';
 import { authenticate, authorize } from '../utils/auth';
 import { minioService } from '../services/minio.service';
 import { logger } from '../utils/logger';
+import '../types/express';
 
 const router = Router();
 
@@ -68,7 +69,7 @@ router.post(
         files.map((file) => minioService.uploadFile(file, 'announcements'))
       );
 
-      logger.info('Images uploadées avec succès', { count: urls.length, userId: (req as any).user?.userId });
+      logger.info('Images uploadées avec succès', { count: urls.length, userId: req.user?.userId });
 
       res.json({
         message: 'Images uploadées avec succès',

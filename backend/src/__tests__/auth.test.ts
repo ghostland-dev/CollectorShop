@@ -4,9 +4,15 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Helper to create test user
+async function createTestUser(email: string, password: string) {
+  return request(app)
+    .post('/api/auth/register')
+    .send({ email, password });
+}
+
 describe('Auth Routes', () => {
   beforeAll(async () => {
-    // Nettoyer la base de données de test
     await prisma.user.deleteMany();
   });
 
@@ -76,13 +82,7 @@ describe('Auth Routes', () => {
 
   describe('POST /api/auth/login', () => {
     beforeEach(async () => {
-      // Créer un utilisateur de test
-      await request(app)
-        .post('/api/auth/register')
-        .send({
-          email: 'login@example.com',
-          password: 'password123',
-        });
+      await createTestUser('login@example.com', 'password123');
     });
 
     it('devrait connecter un utilisateur avec des identifiants valides', async () => {
@@ -126,13 +126,7 @@ describe('Auth Routes', () => {
     let accessToken: string;
 
     beforeEach(async () => {
-      // Créer et connecter un utilisateur
-      await request(app)
-        .post('/api/auth/register')
-        .send({
-          email: 'me@example.com',
-          password: 'password123',
-        });
+      await createTestUser('me@example.com', 'password123');
 
       const loginResponse = await request(app)
         .post('/api/auth/login')

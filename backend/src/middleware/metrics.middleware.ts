@@ -10,7 +10,7 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
 
   // Override res.end to capture response status and duration
   const originalEnd = res.end;
-  res.end = function (chunk?: any, encoding?: any) {
+  res.end = function (chunk?: unknown, encoding?: BufferEncoding) {
     const duration = Date.now() - startTime;
     const method = req.method;
     const status = res.statusCode;

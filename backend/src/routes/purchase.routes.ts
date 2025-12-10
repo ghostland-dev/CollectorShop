@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { authenticate, authorize } from '../utils/auth';
 import { logger } from '../utils/logger';
+import '../types/express';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -11,10 +12,69 @@ const createPurchaseSchema = z.object({
   announcementId: z.string().uuid('ID d\'annonce invalide'),
 });
 
+// Helper function to validate announcement for purchase
+async function validateAnnouncementForPurchase(announcementId: string, buyerId: string) {
+  const announcement = await prisma.announcement.findUnique({
+    where: { id: announcementId },
+    include: { seller: true },
+  });
+
+  if (!announcement) {
+    throw new Error('ANNOUNCEMENT_NOT_FOUND');
+  }
+
+  if (announcement.status !== 'PUBLISHED') {
+    throw new Error('ANNOUNCEMENT_NOT_AVAILABLE');
+  }
+
+  if (announcement.sellerId === buyerId) {
+    throw new Error('CANNOT_BUY_OWN_ANNOUNCEMENT');
+  }
+
+  const existingPurchase = await prisma.purchase.findFirst({
+    where: {
+      announcementId,
+      buyerId,
+      status: 'PENDING',
+    },
+  });
+
+  if (existingPurchase) {
+    throw new Error('PURCHASE_ALREADY_EXISTS');
+  }
+
+  return announcement;
+}
+
+// Helper function to get purchase with full details
+async function getPurchaseWithDetails(purchaseId: string) {
+  return prisma.purchase.findUnique({
+    where: { id: purchaseId },
+    include: {
+      announcement: {
+        include: {
+          seller: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
 // Créer un achat (BUYER uniquement)
 router.post('/', authenticate, authorize('BUYER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Non authentifié' });
+      return;
+    }
     const data = createPurchaseSchema.parse(req.body);
 
     // Vérifier que l'annonce existe et est disponible
@@ -95,7 +155,11 @@ router.post('/', authenticate, authorize('BUYER', 'ADMIN'), async (req: Request,
 // Confirmer un achat (simulation de paiement)
 router.post('/:id/confirm', authenticate, authorize('BUYER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Non authentifié' });
+      return;
+    }
     const { id } = req.params;
 
     const purchase = await prisma.purchase.findUnique({
@@ -132,25 +196,11 @@ router.post('/:id/confirm', authenticate, authorize('BUYER', 'ADMIN'), async (re
 
     logger.info('Achat confirmé', { purchaseId: id, buyerId: user.userId });
 
+    const updatedPurchase = await getPurchaseWithDetails(id);
+
     res.json({
       message: 'Achat confirmé avec succès',
-      purchase: await prisma.purchase.findUnique({
-        where: { id },
-        include: {
-          announcement: {
-            include: {
-              seller: {
-                select: {
-                  id: true,
-                  email: true,
-                  firstName: true,
-                  lastName: true,
-                },
-              },
-            },
-          },
-        },
-      }),
+      purchase: updatedPurchase,
     });
   } catch (error) {
     logger.error('Erreur lors de la confirmation de l\'achat', { error });
@@ -161,7 +211,11 @@ router.post('/:id/confirm', authenticate, authorize('BUYER', 'ADMIN'), async (re
 // Récupérer les achats de l'utilisateur connecté
 router.get('/me', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Non authentifié' });
+      return;
+    }
 
     const purchases = await prisma.purchase.findMany({
       where: { buyerId: user.userId },

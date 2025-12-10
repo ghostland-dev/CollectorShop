@@ -1,11 +1,62 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { authenticate, authorize } from '../utils/auth';
 import { logger } from '../utils/logger';
+import '../types/express';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+interface AnnouncementQuery {
+  category?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  search?: string;
+}
+
+// Helper function to build where clause for announcement filtering
+function buildAnnouncementWhereClause(query: AnnouncementQuery): Prisma.AnnouncementWhereInput {
+  const where: Prisma.AnnouncementWhereInput = {
+    status: 'PUBLISHED',
+  };
+
+  if (query.category) {
+    where.category = query.category;
+  }
+
+  if (query.minPrice || query.maxPrice) {
+    where.price = {};
+    if (query.minPrice) {
+      where.price.gte = parseFloat(query.minPrice);
+    }
+    if (query.maxPrice) {
+      where.price.lte = parseFloat(query.maxPrice);
+    }
+  }
+
+  if (query.search) {
+    where.OR = [
+      { title: { contains: query.search, mode: 'insensitive' } },
+      { description: { contains: query.search, mode: 'insensitive' } },
+    ];
+  }
+
+  return where;
+}
+
+// Helper function to filter and validate image URLs
+function filterValidImageUrls(images: string[]): string[] {
+  return images.filter((img: string) => {
+    if (!img || typeof img !== 'string' || img.trim() === '') return false;
+    try {
+      new URL(img);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
 
 const createAnnouncementSchema = z.object({
   title: z.string().min(3, 'Le titre doit contenir au moins 3 caractères').max(200),
@@ -20,7 +71,11 @@ const updateAnnouncementSchema = createAnnouncementSchema.partial();
 // Créer une annonce (SELLER uniquement)
 router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Non authentifié' });
+      return;
+    }
     const data = createAnnouncementSchema.parse(req.body);
 
     // Vérifier que l'utilisateur existe
@@ -34,16 +89,7 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
     }
 
     // Filtrer les images vides et valider les URLs
-    const validImages = (data.images || []).filter((img: string) => {
-      if (!img || typeof img !== 'string' || img.trim() === '') return false;
-      try {
-        new URL(img);
-        return true;
-      } catch {
-        // Si ce n'est pas une URL valide, on l'ignore
-        return false;
-      }
-    });
+    const validImages = filterValidImageUrls(data.images || []);
 
     const announcement = await prisma.announcement.create({
       data: {
@@ -78,10 +124,11 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
       res.status(400).json({ error: 'Données invalides', details: error.errors });
       return;
     }
-    if ((error as any).code === 'P2003') {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2003') {
+      const prismaError = error as { code: string; meta?: unknown };
       logger.error('Erreur de référence: utilisateur invalide', { 
         userId: user.userId,
-        error: (error as any).meta
+        error: prismaError.meta
       });
       res.status(400).json({ 
         error: 'Erreur de référence: votre compte utilisateur n\'existe plus. Veuillez vous reconnecter.',
@@ -110,26 +157,12 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
 
-    const where: any = {
-      status: 'PUBLISHED',
-    };
-
-    if (category) {
-      where.category = category;
-    }
-
-    if (minPrice || maxPrice) {
-      where.price = {};
-      if (minPrice) where.price.gte = parseFloat(minPrice as string);
-      if (maxPrice) where.price.lte = parseFloat(maxPrice as string);
-    }
-
-    if (search) {
-      where.OR = [
-        { title: { contains: search as string, mode: 'insensitive' } },
-        { description: { contains: search as string, mode: 'insensitive' } },
-      ];
-    }
+    const where = buildAnnouncementWhereClause({
+      category: category as string | undefined,
+      minPrice: minPrice as string | undefined,
+      maxPrice: maxPrice as string | undefined,
+      search: search as string | undefined,
+    });
 
     const [announcements, total] = await Promise.all([
       prisma.announcement.findMany({
@@ -173,7 +206,11 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 // IMPORTANT: Cette route doit être AVANT /:id sinon Express interprète "me" comme un ID
 router.get('/me', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Non authentifié' });
+      return;
+    }
 
     // Admin voit toutes les annonces, SELLER voit seulement les siennes
     const where = user.role === 'ADMIN' ? {} : { sellerId: user.userId };
@@ -235,7 +272,11 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
 router.put('/:id', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Non authentifié' });
+      return;
+    }
     const data = updateAnnouncementSchema.parse(req.body);
 
     // Vérifier que l'annonce existe et appartient à l'utilisateur
@@ -288,7 +329,11 @@ router.put('/:id', authenticate, authorize('SELLER', 'ADMIN'), async (req: Reque
 router.delete('/:id', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Non authentifié' });
+      return;
+    }
 
     const existingAnnouncement = await prisma.announcement.findUnique({
       where: { id }

@@ -5,30 +5,35 @@ import { hashPassword } from '../utils/auth';
 
 const prisma = new PrismaClient();
 
+// Helper functions to reduce complexity
+async function createTestSeller(): Promise<{ id: string; token: string }> {
+  const passwordHash = await hashPassword('password123');
+  const seller = await prisma.user.create({
+    data: {
+      email: 'seller@test.com',
+      passwordHash,
+      role: 'SELLER',
+    }
+  });
+
+  const loginResponse = await request(app)
+    .post('/api/auth/login')
+    .send({
+      email: 'seller@test.com',
+      password: 'password123',
+    });
+
+  return { id: seller.id, token: loginResponse.body.accessToken };
+}
+
 describe('Announcement Routes', () => {
   let sellerToken: string;
   let sellerId: string;
 
   beforeAll(async () => {
-    // Créer un vendeur de test
-    const passwordHash = await hashPassword('password123');
-    const seller = await prisma.user.create({
-      data: {
-        email: 'seller@test.com',
-        passwordHash,
-        role: 'SELLER',
-      }
-    });
+    const seller = await createTestSeller();
     sellerId = seller.id;
-
-    // Se connecter pour obtenir le token
-    const loginResponse = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: 'seller@test.com',
-        password: 'password123',
-      });
-    sellerToken = loginResponse.body.accessToken;
+    sellerToken = seller.token;
   });
 
   afterAll(async () => {
@@ -82,29 +87,33 @@ describe('Announcement Routes', () => {
     });
   });
 
+  // Helper to create test announcements
+  async function createTestAnnouncements(sellerId: string): Promise<void> {
+    await prisma.announcement.createMany({
+      data: [
+        {
+          title: 'Timbre 1950',
+          description: 'Description timbre',
+          price: 150,
+          sellerId,
+          status: 'PUBLISHED',
+          category: 'Philatélie',
+        },
+        {
+          title: 'Pièce de monnaie 1800',
+          description: 'Description pièce',
+          price: 200,
+          sellerId,
+          status: 'PUBLISHED',
+          category: 'Numismatique',
+        },
+      ]
+    });
+  }
+
   describe('GET /api/announcements', () => {
     beforeEach(async () => {
-      // Créer quelques annonces de test
-      await prisma.announcement.createMany({
-        data: [
-          {
-            title: 'Timbre 1950',
-            description: 'Description timbre',
-            price: 150,
-            sellerId,
-            status: 'PUBLISHED',
-            category: 'Philatélie',
-          },
-          {
-            title: 'Pièce de monnaie 1800',
-            description: 'Description pièce',
-            price: 200,
-            sellerId,
-            status: 'PUBLISHED',
-            category: 'Numismatique',
-          },
-        ]
-      });
+      await createTestAnnouncements(sellerId);
     });
 
     it('devrait retourner la liste des annonces publiées', async () => {
@@ -122,7 +131,10 @@ describe('Announcement Routes', () => {
         .get('/api/announcements?category=Philatélie');
 
       expect(response.status).toBe(200);
-      expect(response.body.announcements.every((a: any) => a.category === 'Philatélie')).toBe(true);
+      interface Announcement {
+        category: string;
+      }
+      expect(response.body.announcements.every((a: Announcement) => a.category === 'Philatélie')).toBe(true);
     });
 
     it('devrait rechercher par mot-clé', async () => {
