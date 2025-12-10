@@ -51,9 +51,11 @@ jobs:
 
       - name: Lint backend
         run: npm run lint --workspace=backend
+        continue-on-error: false
 
       - name: Lint frontend
         run: npm run lint --workspace=frontend
+        continue-on-error: false
 
       - name: Build backend
         run: npm run build --workspace=backend
@@ -126,14 +128,14 @@ jobs:
         run: npm run test:coverage --workspace=frontend
 
       - name: Upload backend coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           file: ./backend/coverage/lcov.info
           flags: backend
           name: backend-coverage
 
       - name: Upload frontend coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           file: ./frontend/coverage/lcov.info
           flags: frontend
@@ -273,7 +275,7 @@ jobs:
           fi
 
       - name: Upload Snyk results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always() && steps.snyk.outcome == 'success' && steps.check-snyk-sarif.outputs.exists == 'true'
         continue-on-error: true
         with:
@@ -287,6 +289,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read
     
     steps:
       - name: Checkout code
@@ -326,14 +329,14 @@ jobs:
           fi
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always() && steps.check-trivy-sarif.outputs.backend_exists == 'true'
         continue-on-error: true
         with:
           sarif_file: trivy-backend-results.sarif
 
       - name: Upload Trivy frontend results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always() && steps.check-trivy-sarif.outputs.frontend_exists == 'true'
         continue-on-error: true
         with:
