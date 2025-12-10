@@ -118,6 +118,8 @@ describe('Announcement Routes', () => {
 
   describe('GET /api/announcements', () => {
     beforeEach(async () => {
+      // Nettoyer les annonces existantes avant de créer de nouvelles
+      await prisma.announcement.deleteMany();
       await createTestAnnouncements(sellerId);
     });
 
@@ -127,13 +129,16 @@ describe('Announcement Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('announcements');
-      expect(response.body).toHaveProperty('pagination');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body).toHaveProperty('page');
+      expect(response.body).toHaveProperty('limit');
       expect(Array.isArray(response.body.announcements)).toBe(true);
     });
 
     it('devrait filtrer par catégorie', async () => {
       const response = await request(app)
-        .get('/api/announcements?category=Philatélie');
+        .get('/api/announcements')
+        .query({ category: 'Philatélie' });
 
       expect(response.status).toBe(200);
       interface Announcement {
@@ -144,7 +149,8 @@ describe('Announcement Routes', () => {
 
     it('devrait rechercher par mot-clé', async () => {
       const response = await request(app)
-        .get('/api/announcements?search=timbre');
+        .get('/api/announcements')
+        .query({ search: 'timbre' });
 
       expect(response.status).toBe(200);
       expect(response.body.announcements.length).toBeGreaterThan(0);
