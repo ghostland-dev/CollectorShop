@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Configuration pour le seed
+// Pour exécuter: npm run prisma:seed
+
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  SOLD
+  ARCHIVED
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  role          Role           @default(BUYER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  announcements Announcement[]
+  purchases     Purchase[]
+}
+
+model Announcement {
+  id          String             @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  status      AnnouncementStatus @default(DRAFT)
+  sellerId    String
+  seller      User               @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  category    String?
+  images      String[]           @default([])
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  purchases   Purchase[]
+}
+
+model Purchase {
+  id             String       @id @default(uuid())
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id])
+  buyerId        String
+  buyer          User         @relation(fields: [buyerId], references: [id])
+  amount         Float
+  status         String       @default("PENDING")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([buyerId])
+  @@index([announcementId])
+}
