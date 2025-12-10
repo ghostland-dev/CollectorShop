@@ -82,25 +82,27 @@ import('./services/victoriametrics.service').catch((err) => {
   logger.warn('VictoriaMetrics service non disponible', { error: err });
 });
 
-// Démarrage du serveur
-const server = app.listen(PORT, () => {
-  logger.info(`🚀 Serveur démarré sur le port ${PORT}`);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM reçu, arrêt gracieux...');
-  server.close(async () => {
-    prisma.$disconnect();
-    // Stop VictoriaMetrics push
-    try {
-      const { victoriaMetricsService } = await import('./services/victoriametrics.service');
-      victoriaMetricsService.stop();
-    } catch (err) {
-      // Ignore if service not loaded
-    }
-    process.exit(0);
+// Démarrage du serveur uniquement si on n'est pas en mode test
+if (process.env.NODE_ENV !== 'test') {
+  const server = app.listen(PORT, () => {
+    logger.info(`🚀 Serveur démarré sur le port ${PORT}`);
   });
-});
+
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    logger.info('SIGTERM reçu, arrêt gracieux...');
+    server.close(async () => {
+      prisma.$disconnect();
+      // Stop VictoriaMetrics push
+      try {
+        const { victoriaMetricsService } = await import('./services/victoriametrics.service');
+        victoriaMetricsService.stop();
+      } catch (err) {
+        // Ignore if service not loaded
+      }
+      process.exit(0);
+    });
+  });
+}
 
 export default app;
