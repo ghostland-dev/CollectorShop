@@ -69,7 +69,15 @@ const createAnnouncementSchema = z.object({
 const updateAnnouncementSchema = createAnnouncementSchema.partial();
 
 // Helper function to create announcement data
-async function createAnnouncementData(userId: string, data: z.infer<typeof createAnnouncementSchema>) {
+async function createAnnouncementData(userId: string, data: z.infer<typeof createAnnouncementSchema>): Promise<{
+  title: string;
+  description: string;
+  price: number;
+  category?: string | null;
+  images: string[];
+  sellerId: string;
+  status: 'PUBLISHED';
+}> {
   const seller = await prisma.user.findUnique({
     where: { id: userId },
   });
@@ -149,6 +157,26 @@ function handleAnnouncementCreationError(error: unknown, userId: string | undefi
   handleGenericError(error, userIdValue, res);
 }
 
+// Helper function to create announcement with seller info
+async function createAnnouncementWithSeller(
+  data: Awaited<ReturnType<typeof createAnnouncementData>>,
+  userId: string
+) {
+  return prisma.announcement.create({
+    data,
+    include: {
+      seller: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        }
+      }
+    }
+  });
+}
+
 // Créer une annonce (SELLER uniquement)
 router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -159,27 +187,10 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
     }
     const data = createAnnouncementSchema.parse(req.body);
     const announcementData = await createAnnouncementData(user.userId, data);
-
-    const announcement = await prisma.announcement.create({
-      data: announcementData,
-      include: {
-        seller: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          }
-        }
-      }
-    });
+    const announcement = await createAnnouncementWithSeller(announcementData, user.userId);
 
     logger.info('Annonce créée', { announcementId: announcement.id, sellerId: user.userId });
-
-    res.status(201).json({
-      message: 'Annonce créée avec succès',
-      announcement
-    });
+    res.status(201).json({ message: 'Annonce créée avec succès', announcement });
   } catch (error) {
     handleAnnouncementCreationError(error, req.user?.userId, res);
   }
