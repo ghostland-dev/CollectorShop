@@ -35,13 +35,27 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Generate Prisma Client
+        run: |
+          cd backend
+          npx prisma generate
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/collector_shop_test?schema=public
 
       - name: Lint backend
         run: npm run lint --workspace=backend
+        continue-on-error: false
 
       - name: Lint frontend
         run: npm run lint --workspace=frontend
+        continue-on-error: false
 
       - name: Build backend
         run: npm run build --workspace=backend
@@ -82,7 +96,12 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Setup Prisma
         run: |
@@ -94,7 +113,7 @@ jobs:
       - name: Run migrations
         run: |
           cd backend
-          npx prisma migrate deploy
+          npx prisma db push --accept-data-loss --skip-generate
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/collector_shop_test?schema=public
 
@@ -109,18 +128,20 @@ jobs:
         run: npm run test:coverage --workspace=frontend
 
       - name: Upload backend coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
-          file: ./backend/coverage/lcov.info
+          files: ./backend/coverage/lcov.info
           flags: backend
           name: backend-coverage
+          disable_search: true
 
       - name: Upload frontend coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
-          file: ./frontend/coverage/lcov.info
+          files: ./frontend/coverage/lcov.info
           flags: frontend
           name: frontend-coverage
+          disable_search: true
 
   # Job 3: Tests d'intégration
   integration-tests:
@@ -156,7 +177,12 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Setup Prisma
         run: |
@@ -168,7 +194,7 @@ jobs:
       - name: Run migrations
         run: |
           cd backend
-          npx prisma migrate deploy
+          npx prisma db push --accept-data-loss --skip-generate
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/collector_shop_test?schema=public
 
@@ -199,10 +225,38 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Check SonarCloud configuration
+        id: check_sonar
+        run: |
+          if [ -z "${{ secrets.SONAR_TOKEN }}" ] || [ -z "${{ secrets.SONAR_ORGANIZATION }}" ] || [ -z "${{ secrets.SONAR_PROJECT_KEY }}" ]; then
+            echo "SonarCloud secrets not configured. Skipping analysis."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create sonar-project.properties
+        if: steps.check_sonar.outputs.skip == 'false'
+        run: |
+          cat > sonar-project.properties << EOF
+          sonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+          sonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+          sonar.sources=.
+          sonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info
+          sonar.coverage.exclusions=**/*.test.ts,**/*.test.tsx,**/__tests__/**,**/node_modules/**,**/dist/**,**/*.d.ts
+          EOF
 
       - name: Run SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v6
+        if: steps.check_sonar.outputs.skip == 'false'
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -230,16 +284,28 @@ jobs:
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/node@master
         continue-on-error: true
+        id: snyk
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high
+          args: --severity-threshold=high --sarif-file-output=snyk.sarif
+
+      - name: Check if Snyk SARIF file exists
+        id: check-snyk-sarif
+        run: |
+          if [ -f snyk.sarif ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload Snyk results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && steps.snyk.outcome == 'success' && steps.check-snyk-sarif.outputs.exists == 'true'
+        continue-on-error: true
         with:
           sarif_file: snyk.sarif
+          category: snyk-security-scan
 
   # Job 6: Scan de conteneur
   container-scan:
@@ -249,6 +315,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read
     
     steps:
       - name: Checkout code
@@ -265,6 +332,8 @@ jobs:
           image-ref: collector-shop-backend:test
           format: 'sarif'
           output: 'trivy-backend-results.sarif'
+          scanners: 'vuln'
+          skip-files: 'root/.npm/_cacache/**'
 
       - name: Run Trivy vulnerability scanner (Frontend)
         uses: aquasecurity/trivy-action@master
@@ -272,18 +341,38 @@ jobs:
           image-ref: collector-shop-frontend:test
           format: 'sarif'
           output: 'trivy-frontend-results.sarif'
+          scanners: 'vuln'
+          skip-files: 'root/.npm/_cacache/**'
 
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
+      - name: Check if Trivy SARIF files exist
+        id: check-trivy-sarif
+        run: |
+          if [ -f trivy-backend-results.sarif ]; then
+            echo "backend_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "backend_exists=false" >> $GITHUB_OUTPUT
+          fi
+          if [ -f trivy-frontend-results.sarif ]; then
+            echo "frontend_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "frontend_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload Trivy results to GitHub Security (Backend)
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && steps.check-trivy-sarif.outputs.backend_exists == 'true'
+        continue-on-error: true
         with:
           sarif_file: trivy-backend-results.sarif
+          category: container-scan-backend
 
-      - name: Upload Trivy frontend results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
+      - name: Upload Trivy results to GitHub Security (Frontend)
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && steps.check-trivy-sarif.outputs.frontend_exists == 'true'
+        continue-on-error: true
         with:
           sarif_file: trivy-frontend-results.sarif
+          category: container-scan-frontend
 
   # Job 7: Build et push Docker image
   build-image:

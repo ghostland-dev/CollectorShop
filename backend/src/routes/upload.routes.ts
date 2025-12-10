@@ -3,6 +3,7 @@ import multer from 'multer';
 import { authenticate, authorize } from '../utils/auth';
 import { minioService } from '../services/minio.service';
 import { logger } from '../utils/logger';
+import '../types/express';
 
 const router = Router();
 
@@ -12,7 +13,7 @@ const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb) => {
     const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
@@ -37,7 +38,7 @@ router.post(
 
       const url = await minioService.uploadFile(req.file, 'announcements');
       
-      logger.info('Image uploadée avec succès', { url, userId: (req as any).user?.userId });
+      logger.info('Image uploadée avec succès', { url, userId: req.user?.userId });
 
       res.json({
         message: 'Image uploadée avec succès',
@@ -68,7 +69,7 @@ router.post(
         files.map((file) => minioService.uploadFile(file, 'announcements'))
       );
 
-      logger.info('Images uploadées avec succès', { count: urls.length, userId: (req as any).user?.userId });
+      logger.info('Images uploadées avec succès', { count: urls.length, userId: req.user?.userId });
 
       res.json({
         message: 'Images uploadées avec succès',

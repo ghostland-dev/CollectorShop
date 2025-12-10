@@ -20,18 +20,124 @@ import { AnnouncementCard } from '../components/AnnouncementCard';
 import { CatalogSkeleton } from '../components/LoadingSkeleton';
 import { useNotifications } from '../hooks/useNotifications';
 
+// Helper component for search filters
+function SearchFilters({ search, category, onSearchChange, onCategoryChange, onClearFilters }: {
+  search: string;
+  category: string;
+  onSearchChange: (value: string) => void;
+  onCategoryChange: (value: string) => void;
+  onClearFilters: () => void;
+}) {
+  return (
+    <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+        <TextField
+          fullWidth
+          sx={{ flex: { xs: '1 1 100%', sm: '1 1 auto', minWidth: 250 } }}
+          placeholder="Rechercher un objet..."
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search />
+              </InputAdornment>
+            ),
+            endAdornment: search && (
+              <InputAdornment position="end">
+                <Clear
+                  sx={{ cursor: 'pointer' }}
+                  onClick={() => onSearchChange('')}
+                />
+              </InputAdornment>
+            ),
+          }}
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+        />
+        <FormControl sx={{ minWidth: { xs: '100%', sm: 200 } }}>
+          <InputLabel>
+            <FilterList sx={{ mr: 0.5, verticalAlign: 'middle' }} fontSize="small" />
+            Catégorie
+          </InputLabel>
+          <Select
+            value={category}
+            onChange={(e) => onCategoryChange(e.target.value)}
+            label="Catégorie"
+          >
+            <MenuItem value="">Toutes</MenuItem>
+            <MenuItem value="Philatélie">Philatélie</MenuItem>
+            <MenuItem value="Numismatique">Numismatique</MenuItem>
+            <MenuItem value="Cartes">Cartes</MenuItem>
+            <MenuItem value="Autres">Autres</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+      {(search || category) && (
+        <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Chip
+            label="Effacer les filtres"
+            size="small"
+            onDelete={onClearFilters}
+            deleteIcon={<Clear />}
+            variant="outlined"
+          />
+        </Box>
+      )}
+    </Paper>
+  );
+}
+
+// Helper component for catalog content
+function CatalogContent({ data, isLoading, error }: {
+  data: { announcements: Array<{ id: string }> } | undefined;
+  isLoading: boolean;
+  error: Error | null;
+}) {
+  if (isLoading) {
+    return <CatalogSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <Alert severity="error" sx={{ m: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          {error instanceof Error ? error.message : 'Erreur lors du chargement du catalogue'}
+        </Typography>
+      </Alert>
+    );
+  }
+
+  if (data && data.announcements.length === 0) {
+    return (
+      <Alert severity="info" sx={{ m: 2 }}>
+        <Typography variant="body1">Aucune annonce trouvée</Typography>
+        <Typography variant="body2" sx={{ mt: 1 }}>
+          Essayez de modifier vos critères de recherche
+        </Typography>
+      </Alert>
+    );
+  }
+
+  return (
+    <Grid container spacing={3}>
+      {data?.announcements.map((announcement) => (
+        <Grid item xs={12} sm={6} md={4} key={announcement.id}>
+          <AnnouncementCard announcement={announcement as Parameters<typeof AnnouncementCard>[0]['announcement']} />
+        </Grid>
+      ))}
+    </Grid>
+  );
+}
+
 export function CatalogPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('');
   const { showError } = useNotifications();
 
-  // Debounce search avec useEffect
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
     }, 500);
-
     return () => clearTimeout(timer);
   }, [search]);
 
@@ -52,6 +158,11 @@ export function CatalogPage() {
     showError(errorMessage);
   }
 
+  const handleClearFilters = () => {
+    setSearch('');
+    setCategory('');
+  };
+
   return (
     <Box>
       <Box sx={{ mb: 4 }}>
@@ -63,93 +174,25 @@ export function CatalogPage() {
         </Typography>
       </Box>
 
-      <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-          <TextField
-            fullWidth
-            sx={{ flex: { xs: '1 1 100%', sm: '1 1 auto', minWidth: 250 } }}
-            placeholder="Rechercher un objet..."
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search />
-                </InputAdornment>
-              ),
-              endAdornment: search && (
-                <InputAdornment position="end">
-                  <Clear
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => setSearch('')}
-                  />
-                </InputAdornment>
-              ),
-            }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <FormControl sx={{ minWidth: { xs: '100%', sm: 200 } }}>
-            <InputLabel>
-              <FilterList sx={{ mr: 0.5, verticalAlign: 'middle' }} fontSize="small" />
-              Catégorie
-            </InputLabel>
-            <Select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              label="Catégorie"
-            >
-              <MenuItem value="">Toutes</MenuItem>
-              <MenuItem value="Philatélie">Philatélie</MenuItem>
-              <MenuItem value="Numismatique">Numismatique</MenuItem>
-              <MenuItem value="Cartes">Cartes</MenuItem>
-              <MenuItem value="Autres">Autres</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-        {(debouncedSearch || category) && (
-          <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              {filteredCount} résultat{filteredCount !== 1 ? 's' : ''} trouvé{filteredCount !== 1 ? 's' : ''}
-            </Typography>
-            {(debouncedSearch || category) && (
-              <Chip
-                label={`Effacer les filtres`}
-                size="small"
-                onDelete={() => {
-                  setSearch('');
-                  setCategory('');
-                }}
-                deleteIcon={<Clear />}
-                variant="outlined"
-              />
-            )}
-          </Box>
-        )}
-      </Paper>
+      <SearchFilters
+        search={search}
+        category={category}
+        onSearchChange={setSearch}
+        onCategoryChange={setCategory}
+        onClearFilters={handleClearFilters}
+      />
 
-      {isLoading ? (
-        <CatalogSkeleton />
-      ) : error ? (
-        <Alert severity="error" sx={{ m: 2 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            {error instanceof Error ? error.message : 'Erreur lors du chargement du catalogue'}
-          </Typography>
-        </Alert>
-      ) : data && data.announcements.length === 0 ? (
-        <Alert severity="info" sx={{ m: 2 }}>
-          <Typography variant="body1">Aucune annonce trouvée</Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Essayez de modifier vos critères de recherche
-          </Typography>
-        </Alert>
-      ) : (
-        <Grid container spacing={3}>
-          {data?.announcements.map((announcement) => (
-            <Grid item xs={12} sm={6} md={4} key={announcement.id}>
-              <AnnouncementCard announcement={announcement} />
-            </Grid>
-          ))}
-        </Grid>
+      {(debouncedSearch || category) && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {filteredCount} résultat{filteredCount !== 1 ? 's' : ''} trouvé{filteredCount !== 1 ? 's' : ''}
+        </Typography>
       )}
+
+      <CatalogContent
+        data={data}
+        isLoading={isLoading}
+        error={error}
+      />
     </Box>
   );
 }

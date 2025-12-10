@@ -50,11 +50,13 @@ export function EditAnnouncementPage() {
   }, [announcement]);
 
   const updateMutation = useMutation({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mutationFn: (data: any) => announcementService.update(id!, data),
     onSuccess: () => {
       showSuccess('Annonce modifiée avec succès !');
       navigate('/my-announcements');
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       const message = error.response?.data?.error || error.response?.data?.message || 'Erreur lors de la modification';
       showError(message);

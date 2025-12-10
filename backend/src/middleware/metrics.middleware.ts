@@ -9,8 +9,8 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
   metricsService.incrementActiveConnections();
 
   // Override res.end to capture response status and duration
-  const originalEnd = res.end;
-  res.end = function (chunk?: any, encoding?: any) {
+  const originalEnd = res.end.bind(res);
+  res.end = function (chunk?: unknown, encoding?: BufferEncoding, cb?: () => void): Response {
     const duration = Date.now() - startTime;
     const method = req.method;
     const status = res.statusCode;
@@ -22,8 +22,17 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
     metricsService.decrementActiveConnections();
 
     // Call original end
-    originalEnd.call(this, chunk, encoding);
-  };
+    if (cb && encoding) {
+      return originalEnd(chunk, encoding, cb);
+    }
+    if (encoding) {
+      return originalEnd(chunk, encoding);
+    }
+    if (cb) {
+      return originalEnd(chunk, cb);
+    }
+    return originalEnd(chunk);
+  } as typeof res.end;
 
   next();
 }

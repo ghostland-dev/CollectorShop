@@ -7,6 +7,101 @@ interface AnnouncementCardProps {
   announcement: Announcement;
 }
 
+// Helper component for card image
+function CardImage({ announcement }: { announcement: Announcement }) {
+  if (announcement.images.length > 0) {
+    return (
+      <CardMedia
+        component="img"
+        height="200"
+        image={announcement.images[0]}
+        alt={announcement.title}
+        sx={{ objectFit: 'cover' }}
+      />
+    );
+  }
+  return (
+    <Box
+      sx={{
+        height: 200,
+        bgcolor: 'grey.100',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'grey.400',
+      }}
+    >
+      <ImageNotSupported sx={{ fontSize: 48, mb: 1 }} />
+      <Typography variant="caption">Pas d'image</Typography>
+    </Box>
+  );
+}
+
+// Helper component for card price section
+function CardPriceSection({ price, status }: { price: number; status: string }) {
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Typography variant="h5" color="primary" fontWeight="bold">
+        {price.toFixed(2)} €
+      </Typography>
+      {status === 'SOLD' && (
+        <Chip label="Vendu" color="error" size="small" />
+      )}
+    </Box>
+  );
+}
+
+// Helper component for card content
+function CardContentSection({ announcement }: { announcement: Announcement }) {
+  return (
+    <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+      <Typography
+        variant="h6"
+        component="h2"
+        sx={{
+          mb: 1,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          minHeight: '3.5em',
+        }}
+      >
+        {announcement.title}
+      </Typography>
+      {announcement.category && (
+        <Chip
+          label={announcement.category}
+          size="small"
+          icon={<Collections />}
+          sx={{ mb: 1, alignSelf: 'flex-start' }}
+        />
+      )}
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{
+          mb: 2,
+          flexGrow: 1,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+        }}
+      >
+        {announcement.description}
+      </Typography>
+      <CardPriceSection price={announcement.price} status={announcement.status} />
+      <Button variant="contained" fullWidth size="large">
+        Voir les détails
+      </Button>
+    </CardContent>
+  );
+}
+
 export function AnnouncementCard({ announcement }: AnnouncementCardProps) {
   const navigate = useNavigate();
 
@@ -25,81 +120,8 @@ export function AnnouncementCard({ announcement }: AnnouncementCardProps) {
       }}
       onClick={() => navigate(`/announcements/${announcement.id}`)}
     >
-      {announcement.images.length > 0 ? (
-        <CardMedia
-          component="img"
-          height="200"
-          image={announcement.images[0]}
-          alt={announcement.title}
-          sx={{ objectFit: 'cover' }}
-        />
-      ) : (
-        <Box
-          sx={{
-            height: 200,
-            bgcolor: 'grey.100',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'grey.400',
-          }}
-        >
-          <ImageNotSupported sx={{ fontSize: 48, mb: 1 }} />
-          <Typography variant="caption">Pas d'image</Typography>
-        </Box>
-      )}
-      <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <Typography
-          variant="h6"
-          component="h2"
-          sx={{
-            mb: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            minHeight: '3.5em',
-          }}
-        >
-          {announcement.title}
-        </Typography>
-        {announcement.category && (
-          <Chip
-            label={announcement.category}
-            size="small"
-            icon={<Collections />}
-            sx={{ mb: 1, alignSelf: 'flex-start' }}
-          />
-        )}
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{
-            mb: 2,
-            flexGrow: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}
-        >
-          {announcement.description}
-        </Typography>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h5" color="primary" fontWeight="bold">
-            {announcement.price.toFixed(2)} €
-          </Typography>
-          {announcement.status === 'SOLD' && (
-            <Chip label="Vendu" color="error" size="small" />
-          )}
-        </Box>
-        <Button variant="contained" fullWidth size="large">
-          Voir les détails
-        </Button>
-      </CardContent>
+      <CardImage announcement={announcement} />
+      <CardContentSection announcement={announcement} />
     </Card>
   );
 }

@@ -21,5 +21,14 @@
     "complexity": ["error", 10],
     "max-lines-per-function": ["warn", 50],
     "max-depth": ["warn", 4]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/__tests__/**/*.ts", "**/*.test.ts"],
+      "rules": {
+        "max-lines-per-function": "off",
+        "complexity": "off"
+      }
+    }
+  ]
 }

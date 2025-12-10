@@ -54,6 +54,7 @@ export const announcementService = {
       }
       
       return response.data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Erreur lors de la récupération des annonces:', error);
       

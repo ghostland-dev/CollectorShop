@@ -8,8 +8,8 @@ class ApiClient {
   private client: AxiosInstance;
   private isRefreshing = false;
   private failedQueue: Array<{
-    resolve: (value?: any) => void;
-    reject: (error?: any) => void;
+    resolve: (value?: string) => void;
+    reject: (error?: unknown) => void;
   }> = [];
 
   constructor() {
@@ -38,83 +38,93 @@ class ApiClient {
       async (error: AxiosError) => {
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-        // Si erreur 401 et ce n'est pas une requête de refresh/login/register
-        if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-          if (
-            originalRequest.url?.includes('/auth/login') ||
-            originalRequest.url?.includes('/auth/refresh') ||
-            originalRequest.url?.includes('/auth/register')
-          ) {
-            // Ne pas essayer de refresh pour les routes d'auth
-            return Promise.reject(error);
-          }
-
-          if (this.isRefreshing) {
-            // Si un refresh est en cours, mettre en queue
-            return new Promise((resolve, reject) => {
-              this.failedQueue.push({ resolve, reject });
-            })
-              .then((token) => {
-                originalRequest.headers.Authorization = `Bearer ${token}`;
-                return this.client(originalRequest);
-              })
-              .catch((err) => {
-                return Promise.reject(err);
-              });
-          }
-
-          originalRequest._retry = true;
-          this.isRefreshing = true;
-
-          const refreshToken = useAuthStore.getState().refreshToken;
-
-          if (!refreshToken) {
-            useAuthStore.getState().logout();
-            this.processQueue(null, new Error('Pas de refresh token'));
-            return Promise.reject(error);
-          }
-
-          try {
-            const response = await authService.refreshToken(refreshToken);
-            const { accessToken, refreshToken: newRefreshToken, user } = response;
-            
-            useAuthStore.getState().setTokens(accessToken, newRefreshToken);
-            if (user) {
-              useAuthStore.getState().setAuth(user, accessToken, newRefreshToken);
-            }
-
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-            this.processQueue(accessToken, null);
-
-            return this.client(originalRequest);
-          } catch (refreshError) {
-            this.processQueue(null, refreshError);
-            useAuthStore.getState().logout();
-            return Promise.reject(refreshError);
-          } finally {
-            this.isRefreshing = false;
-          }
+        if (this.shouldHandle401Error(error, originalRequest)) {
+          return this.handle401Error(error, originalRequest);
         }
 
-        // Améliorer le message d'erreur
-        if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-          error.message = `Impossible de se connecter au serveur (${API_BASE_URL}). Vérifiez que le backend est démarré.`;
-        } else if (error.response?.data) {
-          const errorData = error.response.data as any;
-          error.message = errorData.error || errorData.message || error.message;
-        }
-        
-        return Promise.reject(error);
+        return this.handleOtherErrors(error);
       }
     );
   }
 
-  private processQueue(token: string | null, error: any) {
+  private shouldHandle401Error(error: AxiosError, originalRequest: InternalAxiosRequestConfig & { _retry?: boolean } | undefined): boolean {
+    if (error.response?.status !== 401 || !originalRequest || originalRequest._retry) {
+      return false;
+    }
+    const url = originalRequest.url || '';
+    return !url.includes('/auth/login') && !url.includes('/auth/refresh') && !url.includes('/auth/register');
+  }
+
+  private async handle401Error(error: AxiosError, originalRequest: InternalAxiosRequestConfig & { _retry?: boolean }): Promise<unknown> {
+    if (this.isRefreshing) {
+      return this.queueRequest(originalRequest);
+    }
+
+    originalRequest._retry = true;
+    this.isRefreshing = true;
+
+    const refreshToken = useAuthStore.getState().refreshToken;
+    if (!refreshToken) {
+      useAuthStore.getState().logout();
+      this.processQueue(null, new Error('Pas de refresh token'));
+      return Promise.reject(error);
+    }
+
+    try {
+      return await this.refreshAndRetry(originalRequest, refreshToken);
+    } catch (refreshError) {
+      this.processQueue(null, refreshError);
+      useAuthStore.getState().logout();
+      return Promise.reject(refreshError);
+    } finally {
+      this.isRefreshing = false;
+    }
+  }
+
+  private queueRequest(originalRequest: InternalAxiosRequestConfig & { _retry?: boolean }): Promise<unknown> {
+    return new Promise<string>((resolve, reject) => {
+      this.failedQueue.push({ 
+        resolve: (value?: string) => resolve(value || ''), 
+        reject 
+      });
+    })
+      .then((token: string) => {
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return this.client(originalRequest);
+      })
+      .catch((err) => Promise.reject(err));
+  }
+
+  private async refreshAndRetry(originalRequest: InternalAxiosRequestConfig, refreshToken: string): Promise<unknown> {
+    const response = await authService.refreshToken(refreshToken);
+    const { accessToken, refreshToken: newRefreshToken, user } = response;
+    
+    useAuthStore.getState().setTokens(accessToken, newRefreshToken);
+    if (user) {
+      useAuthStore.getState().setAuth(user, accessToken, newRefreshToken);
+    }
+
+    originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+    this.processQueue(accessToken, null);
+    return this.client(originalRequest);
+  }
+
+  private handleOtherErrors(error: AxiosError): Promise<AxiosError> {
+    if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+      error.message = `Impossible de se connecter au serveur (${API_BASE_URL}). Vérifiez que le backend est démarré.`;
+    } else if (error.response?.data) {
+      const errorData = error.response.data as { error?: string; message?: string };
+      error.message = errorData.error || errorData.message || error.message;
+    }
+    return Promise.reject(error);
+  }
+
+  private processQueue(token: string | null, error: unknown): void {
     this.failedQueue.forEach((prom) => {
       if (error) {
         prom.reject(error);
       } else {
-        prom.resolve(token);
+        prom.resolve(token || undefined);
       }
     });
     this.failedQueue = [];
