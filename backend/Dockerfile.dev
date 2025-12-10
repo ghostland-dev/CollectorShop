@@ -1,0 +1,26 @@
+FROM node:20-alpine
+
+# Install required libraries for Prisma
+RUN apk add --no-cache openssl libc6-compat
+
+WORKDIR /app
+
+# Install dependencies (including dev dependencies for development)
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install all dependencies (dev + prod)
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Copy source code
+COPY . .
+
+EXPOSE 5000
+
+ENV NODE_ENV=development
+
+# Use tsx watch for hot reload
+CMD ["npm", "run", "dev"]
