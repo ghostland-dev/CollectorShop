@@ -1,0 +1,155 @@
+import { useState, useMemo, useEffect } from 'react';
+import {
+  Box,
+  Grid,
+  TextField,
+  Typography,
+  Alert,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  InputAdornment,
+  Paper,
+  Chip,
+} from '@mui/material';
+import { Search, FilterList, Clear } from '@mui/icons-material';
+import { useQuery } from '@tanstack/react-query';
+import { announcementService } from '../services/announcement.service';
+import { AnnouncementCard } from '../components/AnnouncementCard';
+import { CatalogSkeleton } from '../components/LoadingSkeleton';
+import { useNotifications } from '../hooks/useNotifications';
+
+export function CatalogPage() {
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [category, setCategory] = useState('');
+  const { showError } = useNotifications();
+
+  // Debounce search avec useEffect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['announcements', { search: debouncedSearch, category }],
+    queryFn: () => announcementService.getAll({ search: debouncedSearch, category, limit: 20 }),
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+
+  const filteredCount = useMemo(() => {
+    if (!data) return 0;
+    return data.announcements.length;
+  }, [data]);
+
+  if (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur lors du chargement du catalogue';
+    showError(errorMessage);
+  }
+
+  return (
+    <Box>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+          Catalogue
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Découvrez notre sélection d'objets de collection
+        </Typography>
+      </Box>
+
+      <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <TextField
+            fullWidth
+            sx={{ flex: { xs: '1 1 100%', sm: '1 1 auto', minWidth: 250 } }}
+            placeholder="Rechercher un objet..."
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search />
+                </InputAdornment>
+              ),
+              endAdornment: search && (
+                <InputAdornment position="end">
+                  <Clear
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => setSearch('')}
+                  />
+                </InputAdornment>
+              ),
+            }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 200 } }}>
+            <InputLabel>
+              <FilterList sx={{ mr: 0.5, verticalAlign: 'middle' }} fontSize="small" />
+              Catégorie
+            </InputLabel>
+            <Select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              label="Catégorie"
+            >
+              <MenuItem value="">Toutes</MenuItem>
+              <MenuItem value="Philatélie">Philatélie</MenuItem>
+              <MenuItem value="Numismatique">Numismatique</MenuItem>
+              <MenuItem value="Cartes">Cartes</MenuItem>
+              <MenuItem value="Autres">Autres</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+        {(debouncedSearch || category) && (
+          <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              {filteredCount} résultat{filteredCount !== 1 ? 's' : ''} trouvé{filteredCount !== 1 ? 's' : ''}
+            </Typography>
+            {(debouncedSearch || category) && (
+              <Chip
+                label={`Effacer les filtres`}
+                size="small"
+                onDelete={() => {
+                  setSearch('');
+                  setCategory('');
+                }}
+                deleteIcon={<Clear />}
+                variant="outlined"
+              />
+            )}
+          </Box>
+        )}
+      </Paper>
+
+      {isLoading ? (
+        <CatalogSkeleton />
+      ) : error ? (
+        <Alert severity="error" sx={{ m: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            {error instanceof Error ? error.message : 'Erreur lors du chargement du catalogue'}
+          </Typography>
+        </Alert>
+      ) : data && data.announcements.length === 0 ? (
+        <Alert severity="info" sx={{ m: 2 }}>
+          <Typography variant="body1">Aucune annonce trouvée</Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Essayez de modifier vos critères de recherche
+          </Typography>
+        </Alert>
+      ) : (
+        <Grid container spacing={3}>
+          {data?.announcements.map((announcement) => (
+            <Grid item xs={12} sm={6} md={4} key={announcement.id}>
+              <AnnouncementCard announcement={announcement} />
+            </Grid>
+          ))}
+        </Grid>
+      )}
+    </Box>
+  );
+}
