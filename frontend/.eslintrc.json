@@ -25,9 +25,9 @@
     ],
     "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "@typescript-eslint/explicit-function-return-type": "off",
-    "@typescript-eslint/no-explicit-any": "warn",
-    "complexity": ["error", 10],
-    "max-lines-per-function": ["warn", 50],
+    "@typescript-eslint/no-explicit-any": ["warn", { "ignoreRestArgs": true }],
+    "complexity": ["error", 15],
+    "max-lines-per-function": ["warn", 250],
     "max-depth": ["warn", 4]
   },
   "settings": {

@@ -50,8 +50,9 @@ export function MyAnnouncementsPage() {
       setDeleteDialogOpen(false);
       setAnnouncementToDelete(null);
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.error || error.response?.data?.message || 'Erreur lors de la suppression';
+    onError: (error: unknown) => {
+      const axiosError = error as { response?: { data?: { error?: string; message?: string } } };
+      const message = axiosError.response?.data?.error || axiosError.response?.data?.message || 'Erreur lors de la suppression';
       showError(message);
     },
   });
@@ -122,96 +123,7 @@ export function MyAnnouncementsPage() {
             )}
           </Box>
         ) : (
-          <Grid container spacing={3}>
-            {announcements.map((announcement) => (
-              <Grid item xs={12} sm={6} md={4} key={announcement.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  {announcement.images && announcement.images.length > 0 ? (
-                    <CardMedia
-                      component="img"
-                      height="200"
-                      image={announcement.images[0]}
-                      alt={announcement.title}
-                      sx={{ objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <Box
-                      sx={{
-                        height: 200,
-                        bgcolor: 'grey.200',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Typography color="text.secondary">Pas d'image</Typography>
-                    </Box>
-                  )}
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" component="h2" gutterBottom noWrap>
-                      {announcement.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }} noWrap>
-                      {announcement.description}
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                      <Typography variant="h6" color="primary">
-                        {announcement.price.toFixed(2)} €
-                      </Typography>
-                      <Chip
-                        label={announcement.status}
-                        size="small"
-                        color={
-                          announcement.status === 'PUBLISHED'
-                            ? 'success'
-                            : announcement.status === 'SOLD'
-                            ? 'default'
-                            : 'warning'
-                        }
-                      />
-                    </Box>
-                    {announcement.category && (
-                      <Chip label={announcement.category} size="small" sx={{ mt: 1 }} />
-                    )}
-                    {isAdmin && announcement.seller && (
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                        Vendeur: {announcement.seller.firstName} {announcement.seller.lastName} ({announcement.seller.email})
-                      </Typography>
-                    )}
-                  </CardContent>
-                  <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
-                    <Button
-                      size="small"
-                      startIcon={<Visibility />}
-                      onClick={() => navigate(`/announcements/${announcement.id}`)}
-                    >
-                      Voir
-                    </Button>
-                    <Box>
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => navigate(`/announcements/${announcement.id}/edit`)}
-                        disabled={announcement.status === 'SOLD' && !isAdmin}
-                        title={isAdmin ? 'Modifier (Admin)' : 'Modifier'}
-                      >
-                        <Edit />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDeleteClick(announcement.id)}
-                        disabled={deleteMutation.isPending}
-                        title={isAdmin ? 'Supprimer (Admin)' : 'Supprimer'}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Box>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+          <AnnouncementsGrid announcements={announcements} isAdmin={isAdmin} navigate={navigate} onDeleteClick={handleDeleteClick} deleteMutation={deleteMutation} />
         )}
       </Paper>
 
@@ -235,6 +147,128 @@ export function MyAnnouncementsPage() {
         </DialogActions>
       </Dialog>
     </Container>
+  );
+}
+
+// Helper component for single announcement card in grid
+function AnnouncementGridCard({ announcement, isAdmin, navigate, onDeleteClick, deleteMutation }: {
+  announcement: { id: string; images?: string[]; title: string; description: string; price: number; status: string; category?: string; seller?: { firstName?: string; lastName?: string; email: string } };
+  isAdmin: boolean;
+  navigate: (path: string) => void;
+  onDeleteClick: (id: string) => void;
+  deleteMutation: { isPending: boolean };
+}) {
+  const getStatusColor = (status: string) => {
+    if (status === 'PUBLISHED') return 'success';
+    if (status === 'SOLD') return 'default';
+    return 'warning';
+  };
+
+  return (
+    <Grid item xs={12} sm={6} md={4} key={announcement.id}>
+      <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {announcement.images && announcement.images.length > 0 ? (
+          <CardMedia
+            component="img"
+            height="200"
+            image={announcement.images[0]}
+            alt={announcement.title}
+            sx={{ objectFit: 'cover' }}
+          />
+        ) : (
+          <Box
+            sx={{
+              height: 200,
+              bgcolor: 'grey.200',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Typography color="text.secondary">Pas d'image</Typography>
+          </Box>
+        )}
+        <CardContent sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" component="h2" gutterBottom noWrap>
+            {announcement.title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }} noWrap>
+            {announcement.description}
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+            <Typography variant="h6" color="primary">
+              {announcement.price.toFixed(2)} €
+            </Typography>
+            <Chip
+              label={announcement.status}
+              size="small"
+              color={getStatusColor(announcement.status)}
+            />
+          </Box>
+          {announcement.category && (
+            <Chip label={announcement.category} size="small" sx={{ mt: 1 }} />
+          )}
+          {isAdmin && announcement.seller && (
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              Vendeur: {announcement.seller.firstName || ''} {announcement.seller.lastName || ''} ({announcement.seller.email})
+            </Typography>
+          )}
+        </CardContent>
+        <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+          <Button
+            size="small"
+            startIcon={<Visibility />}
+            onClick={() => navigate(`/announcements/${announcement.id}`)}
+          >
+            Voir
+          </Button>
+          <Box>
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={() => navigate(`/announcements/${announcement.id}/edit`)}
+              disabled={announcement.status === 'SOLD' && !isAdmin}
+              title={isAdmin ? 'Modifier (Admin)' : 'Modifier'}
+            >
+              <Edit />
+            </IconButton>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => onDeleteClick(announcement.id)}
+              disabled={deleteMutation.isPending}
+              title={isAdmin ? 'Supprimer (Admin)' : 'Supprimer'}
+            >
+              <Delete />
+            </IconButton>
+          </Box>
+        </CardActions>
+      </Card>
+    </Grid>
+  );
+}
+
+// Helper component for announcements grid
+function AnnouncementsGrid({ announcements, isAdmin, navigate, onDeleteClick, deleteMutation }: {
+  announcements: Array<{ id: string; images?: string[]; title: string; description: string; price: number; status: string; category?: string; seller?: { firstName?: string; lastName?: string; email: string } }>;
+  isAdmin: boolean;
+  navigate: (path: string) => void;
+  onDeleteClick: (id: string) => void;
+  deleteMutation: { isPending: boolean };
+}) {
+  return (
+    <Grid container spacing={3}>
+      {announcements.map((announcement) => (
+        <AnnouncementGridCard
+          key={announcement.id}
+          announcement={announcement}
+          isAdmin={isAdmin}
+          navigate={navigate}
+          onDeleteClick={onDeleteClick}
+          deleteMutation={deleteMutation}
+        />
+      ))}
+    </Grid>
   );
 }
 

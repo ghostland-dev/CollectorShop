@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { hashPassword, comparePassword, generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/auth';
 import { logger } from '../utils/logger';
 import { authenticate } from '../utils/auth';
+import '../types/express';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -21,64 +22,73 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Mot de passe requis'),
 });
 
+// Helper function to create user payload
+function createUserPayload(user: { id: string; email: string; role: string }): { userId: string; email: string; role: string } {
+  return {
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+  };
+}
+
+// Helper function to handle user registration
+async function handleUserRegistration(data: z.infer<typeof registerSchema>) {
+  const existingUser = await prisma.user.findUnique({
+    where: { email: data.email }
+  });
+
+  if (existingUser) {
+    throw new Error('EMAIL_EXISTS');
+  }
+
+  const passwordHash = await hashPassword(data.password);
+
+  const user = await prisma.user.create({
+    data: {
+      email: data.email,
+      passwordHash,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      role: data.role,
+    },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      role: true,
+      createdAt: true,
+    }
+  });
+
+  const payload = createUserPayload(user);
+  const accessToken = generateAccessToken(payload);
+  const refreshToken = generateRefreshToken(payload);
+
+  return { user, accessToken, refreshToken };
+}
+
 // Inscription
 router.post('/register', async (req: Request, res: Response): Promise<void> => {
   try {
     const data = registerSchema.parse(req.body);
-    
-    // Vérifier si l'utilisateur existe déjà
-    const existingUser = await prisma.user.findUnique({
-      where: { email: data.email }
-    });
+    const result = await handleUserRegistration(data);
 
-    if (existingUser) {
-      res.status(409).json({ error: 'Cet email est déjà utilisé' });
-      return;
-    }
-
-    // Hasher le mot de passe
-    const passwordHash = await hashPassword(data.password);
-
-    // Créer l'utilisateur
-    const user = await prisma.user.create({
-      data: {
-        email: data.email,
-        passwordHash,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        role: data.role,
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        createdAt: true,
-      }
-    });
-
-    logger.info('Nouvel utilisateur créé', { userId: user.id, email: user.email });
-
-    // Générer les tokens pour la connexion automatique après inscription
-    const payload = {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+    logger.info('Nouvel utilisateur créé', { userId: result.user.id, email: result.user.email });
 
     res.status(201).json({
       message: 'Utilisateur créé avec succès',
-      user,
-      accessToken,
-      refreshToken,
+      user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Données invalides', details: error.errors });
+      return;
+    }
+    if (error instanceof Error && error.message === 'EMAIL_EXISTS') {
+      res.status(409).json({ error: 'Cet email est déjà utilisé' });
       return;
     }
     logger.error('Erreur lors de l\'inscription', { error });
@@ -86,55 +96,59 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// Helper function to handle user login
+async function handleUserLogin(email: string, password: string) {
+  const user = await prisma.user.findUnique({
+    where: { email }
+  });
+
+  if (!user) {
+    throw new Error('INVALID_CREDENTIALS');
+  }
+
+  const isValidPassword = await comparePassword(password, user.passwordHash);
+  if (!isValidPassword) {
+    throw new Error('INVALID_CREDENTIALS');
+  }
+
+  const payload = createUserPayload(user);
+  const accessToken = generateAccessToken(payload);
+  const refreshToken = generateRefreshToken(payload);
+
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+    }
+  };
+}
+
 // Connexion
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
   try {
     const data = loginSchema.parse(req.body);
+    const result = await handleUserLogin(data.email, data.password);
 
-    // Trouver l'utilisateur
-    const user = await prisma.user.findUnique({
-      where: { email: data.email }
-    });
-
-    if (!user) {
-      res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-      return;
-    }
-
-    // Vérifier le mot de passe
-    const isValidPassword = await comparePassword(data.password, user.passwordHash);
-    if (!isValidPassword) {
-      res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-      return;
-    }
-
-    // Générer les tokens
-    const payload = {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
-
-    logger.info('Connexion réussie', { userId: user.id });
+    logger.info('Connexion réussie', { userId: result.user.id });
 
     res.json({
       message: 'Connexion réussie',
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-      }
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      user: result.user
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Données invalides', details: error.errors });
+      return;
+    }
+    if (error instanceof Error && error.message === 'INVALID_CREDENTIALS') {
+      res.status(401).json({ error: 'Email ou mot de passe incorrect' });
       return;
     }
     logger.error('Erreur lors de la connexion', { error });
@@ -142,60 +156,66 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// Helper function to handle token refresh
+async function handleTokenRefresh(refreshToken: string) {
+  if (!refreshToken) {
+    throw new Error('REFRESH_TOKEN_MISSING');
+  }
+
+  const payload = verifyRefreshToken(refreshToken);
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      role: true,
+    }
+  });
+
+  if (!user) {
+    throw new Error('USER_NOT_FOUND');
+  }
+
+  const newPayload = createUserPayload(user);
+  const accessToken = generateAccessToken(newPayload);
+  const newRefreshToken = generateRefreshToken(newPayload);
+
+  return {
+    accessToken,
+    refreshToken: newRefreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+    }
+  };
+}
+
 // Renouveler le token d'accès avec le refresh token
 router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
   try {
     const { refreshToken } = req.body;
+    const result = await handleTokenRefresh(refreshToken);
 
-    if (!refreshToken) {
-      res.status(400).json({ error: 'Refresh token manquant' });
-      return;
-    }
+    logger.info('Token renouvelé', { userId: result.user.id });
 
-    // Vérifier le refresh token
-    const payload = verifyRefreshToken(refreshToken);
-
-    // Vérifier que l'utilisateur existe toujours
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-      }
-    });
-
-    if (!user) {
-      res.status(404).json({ error: 'Utilisateur non trouvé' });
-      return;
-    }
-
-    // Générer un nouveau token d'accès
-    const newPayload = {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    const accessToken = generateAccessToken(newPayload);
-    const newRefreshToken = generateRefreshToken(newPayload);
-
-    logger.info('Token renouvelé', { userId: user.id });
-
-    res.json({
-      accessToken,
-      refreshToken: newRefreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-      }
-    });
+    res.json(result);
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'REFRESH_TOKEN_MISSING') {
+        res.status(400).json({ error: 'Refresh token manquant' });
+        return;
+      }
+      if (error.message === 'USER_NOT_FOUND') {
+        res.status(404).json({ error: 'Utilisateur non trouvé' });
+        return;
+      }
+    }
     logger.error('Erreur lors du renouvellement du token', { error });
     res.status(401).json({ error: 'Refresh token invalide ou expiré' });
   }
@@ -204,7 +224,11 @@ router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
 // Récupérer le profil de l'utilisateur connecté
 router.get('/me', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Non authentifié' });
+      return;
+    }
     
     const userData = await prisma.user.findUnique({
       where: { id: user.userId },

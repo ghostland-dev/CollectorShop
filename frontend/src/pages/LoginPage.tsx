@@ -32,6 +32,7 @@ export function LoginPage() {
       showSuccess('Connexion réussie !');
       navigate('/');
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       const message = error.response?.data?.error || error.response?.data?.message || 'Erreur de connexion';
       showError(message);

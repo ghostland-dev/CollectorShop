@@ -17,10 +17,103 @@ interface ImageUploadProps {
   maxImages?: number;
 }
 
+// Helper component for single image preview
+function ImagePreviewItem({ url, index, onRemove }: { url: string; index: number; onRemove: (index: number) => void }) {
+  return (
+    <Box
+      sx={{
+        position: 'relative',
+        aspectRatio: '1',
+        borderRadius: 1,
+        overflow: 'hidden',
+        border: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      {url ? (
+        <Box
+          component="img"
+          src={url}
+          alt={`Preview ${index + 1}`}
+          sx={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          }}
+        />
+      ) : (
+        <Box
+          sx={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'grey.200',
+          }}
+        >
+          <ImageIcon sx={{ fontSize: 40, color: 'text.secondary' }} />
+        </Box>
+      )}
+      <IconButton
+        size="small"
+        onClick={() => onRemove(index)}
+        sx={{
+          position: 'absolute',
+          top: 4,
+          right: 4,
+          bgcolor: 'error.main',
+          color: 'white',
+          '&:hover': {
+            bgcolor: 'error.dark',
+          },
+        }}
+      >
+        <Delete fontSize="small" />
+      </IconButton>
+    </Box>
+  );
+}
+
+// Helper component for image preview
+function ImagePreview({ images, onRemove }: { images: string[]; onRemove: (index: number) => void }) {
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+        gap: 2,
+        mt: 2,
+      }}
+    >
+      {images.map((url, index) => (
+        <ImagePreviewItem
+          key={index}
+          url={url}
+          index={index}
+          onRemove={onRemove}
+        />
+      ))}
+    </Box>
+  );
+}
+
 export function ImageUpload({ images, onImagesChange, maxImages = 5 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const { showSuccess, showError } = useNotifications();
+
+  const performUpload = useCallback(
+    async (formData: FormData) => {
+      const response = await api.post('/upload/images', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data.urls || [];
+    },
+    []
+  );
 
   const handleUpload = useCallback(
     async (files: FileList | File[]) => {
@@ -39,26 +132,21 @@ export function ImageUpload({ images, onImagesChange, maxImages = 5 }: ImageUplo
           formData.append('images', file);
         });
 
-        const response = await api.post('/upload/images', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        const newUrls = response.data.urls || [];
+        const newUrls = await performUpload(formData);
         onImagesChange([...images, ...newUrls]);
         showSuccess(`${newUrls.length} image(s) uploadée(s) avec succès`);
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const axiosError = error as { response?: { data?: { error?: string; message?: string } } };
         const message =
-          error.response?.data?.error ||
-          error.response?.data?.message ||
+          axiosError.response?.data?.error ||
+          axiosError.response?.data?.message ||
           'Erreur lors de l\'upload des images';
         showError(message);
       } finally {
         setUploading(false);
       }
     },
-    [images, maxImages, onImagesChange, showSuccess, showError]
+    [images, maxImages, onImagesChange, showSuccess, showError, performUpload]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -159,73 +247,7 @@ export function ImageUpload({ images, onImagesChange, maxImages = 5 }: ImageUplo
         )}
       </Paper>
 
-      {/* Aperçu des images */}
-      {images.length > 0 && (
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-            gap: 2,
-            mt: 2,
-          }}
-        >
-          {images.map((url, index) => (
-            <Box
-              key={index}
-              sx={{
-                position: 'relative',
-                aspectRatio: '1',
-                borderRadius: 1,
-                overflow: 'hidden',
-                border: '1px solid',
-                borderColor: 'divider',
-              }}
-            >
-              {url ? (
-                <Box
-                  component="img"
-                  src={url}
-                  alt={`Preview ${index + 1}`}
-                  sx={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                  }}
-                />
-              ) : (
-                <Box
-                  sx={{
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: 'grey.200',
-                  }}
-                >
-                  <ImageIcon sx={{ fontSize: 40, color: 'text.secondary' }} />
-                </Box>
-              )}
-              <IconButton
-                size="small"
-                onClick={() => handleRemove(index)}
-                sx={{
-                  position: 'absolute',
-                  top: 4,
-                  right: 4,
-                  bgcolor: 'error.main',
-                  color: 'white',
-                  '&:hover': {
-                    bgcolor: 'error.dark',
-                  },
-                }}
-              >
-                <Delete fontSize="small" />
-              </IconButton>
-            </Box>
-          ))}
-        </Box>
-      )}
+      {images.length > 0 && <ImagePreview images={images} onRemove={handleRemove} />}
 
       {images.length >= maxImages && (
         <Alert severity="info" sx={{ mt: 2 }}>

@@ -13,11 +13,173 @@ import {
 } from '@mui/material';
 import { ShoppingCart, Payment, Edit, Delete } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { announcementService } from '../services/announcement.service';
+import { announcementService, Announcement } from '../services/announcement.service';
 import { purchaseService } from '../services/purchase.service';
 import { useCartStore } from '../stores/cartStore';
 import { useAuthStore } from '../stores/authStore';
 import { useNotifications } from '../hooks/useNotifications';
+import { AxiosError } from 'axios';
+
+// Helper component for announcement image
+function AnnouncementImage({ announcement }: { announcement: Announcement }) {
+  if (announcement.images.length > 0) {
+    return (
+      <Box
+        component="img"
+        src={announcement.images[0]}
+        alt={announcement.title}
+        sx={{ width: '100%', borderRadius: 2 }}
+      />
+    );
+  }
+  return (
+    <Box
+      sx={{
+        width: '100%',
+        height: 400,
+        bgcolor: 'grey.200',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 2,
+      }}
+    >
+      <Typography color="text.secondary">Pas d'image</Typography>
+    </Box>
+  );
+}
+
+// Helper component for purchase buttons
+function PurchaseButtons({ canPurchase, onAddToCart, onBuyNow, isPending }: {
+  canPurchase: boolean;
+  onAddToCart: () => void;
+  onBuyNow: () => void;
+  isPending: boolean;
+}) {
+  if (!canPurchase) return null;
+  return (
+    <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+      <Button
+        variant="outlined"
+        size="large"
+        startIcon={<ShoppingCart />}
+        onClick={onAddToCart}
+        sx={{ flex: 1 }}
+      >
+        Ajouter au panier
+      </Button>
+      <Button
+        variant="contained"
+        size="large"
+        startIcon={<Payment />}
+        onClick={onBuyNow}
+        disabled={isPending}
+        sx={{ flex: 1 }}
+      >
+        {isPending ? 'Traitement...' : 'Acheter maintenant'}
+      </Button>
+    </Box>
+  );
+}
+
+// Helper component for announcement info
+function AnnouncementInfo({ announcement, canPurchase, onAddToCart, onBuyNow, isPending }: {
+  announcement: Announcement;
+  canPurchase: boolean;
+  onAddToCart: () => void;
+  onBuyNow: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <>
+      <Typography variant="h4" component="h1" gutterBottom>
+        {announcement.title}
+      </Typography>
+      {announcement.category && (
+        <Chip label={announcement.category} sx={{ mb: 2 }} />
+      )}
+      <Typography variant="h5" color="primary" sx={{ mb: 2 }}>
+        {announcement.price.toFixed(2)} €
+      </Typography>
+      <Typography variant="body1" paragraph>
+        {announcement.description}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Statut: {announcement.status}
+      </Typography>
+      {announcement.seller && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Vendeur: {announcement.seller.firstName} {announcement.seller.lastName} ({announcement.seller.email})
+        </Typography>
+      )}
+      <PurchaseButtons
+        canPurchase={canPurchase}
+        onAddToCart={onAddToCart}
+        onBuyNow={onBuyNow}
+        isPending={isPending}
+      />
+    </>
+  );
+}
+
+// Helper function to extract error message
+function getErrorMessage(error: unknown): string {
+  if (error && typeof error === 'object' && 'response' in error) {
+    const axiosError = error as AxiosError<{ error?: string; message?: string }>;
+    return axiosError.response?.data?.error || axiosError.response?.data?.message || 'Erreur inconnue';
+  }
+  return 'Erreur inconnue';
+}
+
+// Helper component for management actions
+function ManagementActions({ canManage, isAdmin, announcementStatus, onEdit, onDelete, isDeleting }: {
+  canManage: boolean;
+  isAdmin: boolean;
+  announcementStatus: string;
+  onEdit: () => void;
+  onDelete: () => void;
+  isDeleting: boolean;
+}) {
+  if (!canManage) return null;
+  return (
+    <Box>
+      <IconButton
+        color="primary"
+        onClick={onEdit}
+        disabled={announcementStatus === 'SOLD' && !isAdmin}
+        title={isAdmin ? 'Modifier (Admin)' : 'Modifier'}
+      >
+        <Edit />
+      </IconButton>
+      <IconButton
+        color="error"
+        onClick={onDelete}
+        disabled={isDeleting}
+        title={isAdmin ? 'Supprimer (Admin)' : 'Supprimer'}
+      >
+        <Delete />
+      </IconButton>
+    </Box>
+  );
+}
+
+// Helper component for announcement alerts
+function AnnouncementAlerts({ status, isAuthenticated }: { status: string; isAuthenticated: boolean }) {
+  return (
+    <>
+      {status === 'SOLD' && (
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          Cet article a déjà été vendu
+        </Alert>
+      )}
+      {!isAuthenticated && (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Connectez-vous pour ajouter cet article au panier ou l'acheter
+        </Alert>
+      )}
+    </>
+  );
+}
 
 export function AnnouncementDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +197,7 @@ export function AnnouncementDetailPage() {
   });
 
   const isOwner = announcement?.sellerId === user?.id;
+  const canManage = isAdmin || isOwner;
 
   const purchaseMutation = useMutation({
     mutationFn: () => purchaseService.create({ announcementId: id! }),
@@ -42,9 +205,8 @@ export function AnnouncementDetailPage() {
       showSuccess('Achat créé avec succès !');
       navigate('/purchases');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.error || error.response?.data?.message || 'Erreur lors de l\'achat';
-      showError(message);
+    onError: (error: unknown) => {
+      showError(getErrorMessage(error) || 'Erreur lors de l\'achat');
     },
   });
 
@@ -56,9 +218,8 @@ export function AnnouncementDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['myAnnouncements'] });
       navigate('/catalog');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.error || error.response?.data?.message || 'Erreur lors de la suppression';
-      showError(message);
+    onError: (error: unknown) => {
+      showError(getErrorMessage(error) || 'Erreur lors de la suppression');
     },
   });
 
@@ -83,8 +244,13 @@ export function AnnouncementDetailPage() {
     purchaseMutation.mutate();
   };
 
+  const handleDelete = () => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette annonce ?')) {
+      deleteMutation.mutate();
+    }
+  };
+
   const canPurchase = isAuthenticated && user?.role === 'BUYER' && announcement?.status === 'PUBLISHED';
-  const canManage = isAdmin || isOwner;
 
   if (isLoading) {
     return (
@@ -109,111 +275,28 @@ export function AnnouncementDetailPage() {
           <Button onClick={() => navigate(-1)}>
             ← Retour
           </Button>
-          {canManage && (
-            <Box>
-              <IconButton
-                color="primary"
-                onClick={() => navigate(`/announcements/${id}/edit`)}
-                disabled={announcement.status === 'SOLD' && !isAdmin}
-                title={isAdmin ? 'Modifier (Admin)' : 'Modifier'}
-              >
-                <Edit />
-              </IconButton>
-              <IconButton
-                color="error"
-                onClick={() => {
-                  if (window.confirm('Êtes-vous sûr de vouloir supprimer cette annonce ?')) {
-                    deleteMutation.mutate();
-                  }
-                }}
-                disabled={deleteMutation.isPending}
-                title={isAdmin ? 'Supprimer (Admin)' : 'Supprimer'}
-              >
-                <Delete />
-              </IconButton>
-            </Box>
-          )}
+          <ManagementActions
+            canManage={canManage}
+            isAdmin={isAdmin}
+            announcementStatus={announcement.status}
+            onEdit={() => navigate(`/announcements/${id}/edit`)}
+            onDelete={handleDelete}
+            isDeleting={deleteMutation.isPending}
+          />
         </Box>
         <Grid container spacing={4}>
           <Grid item xs={12} md={6}>
-            {announcement.images.length > 0 ? (
-              <Box
-                component="img"
-                src={announcement.images[0]}
-                alt={announcement.title}
-                sx={{ width: '100%', borderRadius: 2 }}
-              />
-            ) : (
-              <Box
-                sx={{
-                  width: '100%',
-                  height: 400,
-                  bgcolor: 'grey.200',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 2,
-                }}
-              >
-                <Typography color="text.secondary">Pas d'image</Typography>
-              </Box>
-            )}
+            <AnnouncementImage announcement={announcement} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <Typography variant="h4" component="h1" gutterBottom>
-              {announcement.title}
-            </Typography>
-            {announcement.category && (
-              <Chip label={announcement.category} sx={{ mb: 2 }} />
-            )}
-            <Typography variant="h5" color="primary" sx={{ mb: 2 }}>
-              {announcement.price.toFixed(2)} €
-            </Typography>
-            <Typography variant="body1" paragraph>
-              {announcement.description}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Statut: {announcement.status}
-            </Typography>
-            {announcement.seller && (
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Vendeur: {announcement.seller.firstName} {announcement.seller.lastName} (
-                {announcement.seller.email})
-              </Typography>
-            )}
-            {canPurchase && (
-              <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  startIcon={<ShoppingCart />}
-                  onClick={handleAddToCart}
-                  sx={{ flex: 1 }}
-                >
-                  Ajouter au panier
-                </Button>
-                <Button
-                  variant="contained"
-                  size="large"
-                  startIcon={<Payment />}
-                  onClick={handleBuyNow}
-                  disabled={purchaseMutation.isPending}
-                  sx={{ flex: 1 }}
-                >
-                  {purchaseMutation.isPending ? 'Traitement...' : 'Acheter maintenant'}
-                </Button>
-              </Box>
-            )}
-            {announcement.status === 'SOLD' && (
-              <Alert severity="warning" sx={{ mt: 2 }}>
-                Cet article a déjà été vendu
-              </Alert>
-            )}
-            {!isAuthenticated && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                Connectez-vous pour ajouter cet article au panier ou l'acheter
-              </Alert>
-            )}
+            <AnnouncementInfo
+              announcement={announcement}
+              canPurchase={canPurchase}
+              onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
+              isPending={purchaseMutation.isPending}
+            />
+            <AnnouncementAlerts status={announcement.status} isAuthenticated={isAuthenticated} />
           </Grid>
         </Grid>
       </Paper>

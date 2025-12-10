@@ -8,8 +8,7 @@ COPY package*.json ./
 COPY frontend/package*.json ./frontend/
 
 # Install dependencies
-# Use npm install if package-lock.json doesn't exist, otherwise use npm ci
-RUN if [ -f package-lock.json ]; then npm ci --workspace=frontend; else npm install --workspace=frontend; fi
+RUN npm install --workspace=frontend
 
 # Copy source code
 COPY frontend/ ./frontend/

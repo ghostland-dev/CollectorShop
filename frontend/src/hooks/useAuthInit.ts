@@ -8,17 +8,14 @@ import { authService } from '../services/auth.service';
  * Le refresh automatique est géré par l'intercepteur axios
  */
 export function useAuthInit() {
-  const { token, refreshToken, user, setAuth, logout } = useAuthStore();
+  const { token, refreshToken, user, setAuth } = useAuthStore();
   const hasInitialized = useRef(false);
 
   useEffect(() => {
-    // Éviter les appels multiples
     if (hasInitialized.current) return;
     hasInitialized.current = true;
 
     const initAuth = async () => {
-      // Si on a un token mais pas d'utilisateur, récupérer le profil
-      // L'intercepteur axios gérera automatiquement le refresh si nécessaire
       if (token && !user && refreshToken) {
         try {
           const userData = await authService.getMe();
@@ -26,18 +23,16 @@ export function useAuthInit() {
         } catch (error) {
           // Si le token est invalide, l'intercepteur essaiera de le renouveler
           // Si ça échoue, il déconnectera automatiquement
-          // On ne fait rien ici pour éviter les appels multiples
         }
       }
     };
 
-    // Délai pour éviter les appels trop tôt
     const timer = setTimeout(() => {
       initAuth();
     }, 100);
 
     return () => clearTimeout(timer);
-  }, []); // Seulement au montage du composant
+  }, [token, refreshToken, user, setAuth]);
 
   return null;
 }
