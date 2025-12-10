@@ -240,7 +240,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/node@master
@@ -299,16 +304,30 @@ jobs:
           format: 'sarif'
           output: 'trivy-frontend-results.sarif'
 
+      - name: Check if Trivy SARIF files exist
+        id: check-trivy-sarif
+        run: |
+          if [ -f trivy-backend-results.sarif ]; then
+            echo "backend_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "backend_exists=false" >> $GITHUB_OUTPUT
+          fi
+          if [ -f trivy-frontend-results.sarif ]; then
+            echo "frontend_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "frontend_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
-        if: always() && hashFiles('trivy-backend-results.sarif') != ''
+        if: always() && steps.check-trivy-sarif.outputs.backend_exists == 'true'
         continue-on-error: true
         with:
           sarif_file: trivy-backend-results.sarif
 
       - name: Upload Trivy frontend results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
-        if: always() && hashFiles('trivy-frontend-results.sarif') != ''
+        if: always() && steps.check-trivy-sarif.outputs.frontend_exists == 'true'
         continue-on-error: true
         with:
           sarif_file: trivy-frontend-results.sarif
