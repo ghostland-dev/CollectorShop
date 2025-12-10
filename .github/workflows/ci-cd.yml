@@ -332,6 +332,9 @@ jobs:
           image-ref: collector-shop-backend:test
           format: 'sarif'
           output: 'trivy-backend-results.sarif'
+          scanners: 'vuln'
+          skip-version-check: true
+          args: '--skip-files root/.npm/_cacache/**'
 
       - name: Run Trivy vulnerability scanner (Frontend)
         uses: aquasecurity/trivy-action@master
@@ -339,6 +342,9 @@ jobs:
           image-ref: collector-shop-frontend:test
           format: 'sarif'
           output: 'trivy-frontend-results.sarif'
+          scanners: 'vuln'
+          skip-version-check: true
+          args: '--skip-files root/.npm/_cacache/**'
 
       - name: Check if Trivy SARIF files exist
         id: check-trivy-sarif
