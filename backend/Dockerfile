@@ -8,8 +8,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install dependencies
-# Use npm install if package-lock.json doesn't exist, otherwise use npm ci
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -27,7 +26,7 @@ WORKDIR /app
 
 # Install only production dependencies
 COPY package*.json ./
-RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
+RUN npm install --omit=dev
 
 # Copy built files and Prisma
 COPY --from=builder /app/dist ./dist

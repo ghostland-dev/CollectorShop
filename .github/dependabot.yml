@@ -1,0 +1,26 @@
+version: 2
+updates:
+  # Configuration pour npm (workspace à la racine)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    # Groupes de mises à jour pour réduire le nombre de PRs
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
+    # Permettre les mises à jour de sécurité même si elles sont majeures
+    allow:
+      - dependency-type: "production"
+    # Ignorer les mises à jour majeures automatiques (sauf pour les mises à jour de sécurité)
+    ignore:
+      # Ignorer les mises à jour majeures pour les dépendances critiques (sauf sécurité)
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # Labels pour les PRs
+    labels:
+      - "dependencies"
+      - "npm"
