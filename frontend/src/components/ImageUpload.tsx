@@ -17,6 +17,64 @@ interface ImageUploadProps {
   maxImages?: number;
 }
 
+// Helper component for single image preview
+function ImagePreviewItem({ url, index, onRemove }: { url: string; index: number; onRemove: (index: number) => void }) {
+  return (
+    <Box
+      sx={{
+        position: 'relative',
+        aspectRatio: '1',
+        borderRadius: 1,
+        overflow: 'hidden',
+        border: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      {url ? (
+        <Box
+          component="img"
+          src={url}
+          alt={`Preview ${index + 1}`}
+          sx={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          }}
+        />
+      ) : (
+        <Box
+          sx={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'grey.200',
+          }}
+        >
+          <ImageIcon sx={{ fontSize: 40, color: 'text.secondary' }} />
+        </Box>
+      )}
+      <IconButton
+        size="small"
+        onClick={() => onRemove(index)}
+        sx={{
+          position: 'absolute',
+          top: 4,
+          right: 4,
+          bgcolor: 'error.main',
+          color: 'white',
+          '&:hover': {
+            bgcolor: 'error.dark',
+          },
+        }}
+      >
+        <Delete fontSize="small" />
+      </IconButton>
+    </Box>
+  );
+}
+
 // Helper component for image preview
 function ImagePreview({ images, onRemove }: { images: string[]; onRemove: (index: number) => void }) {
   return (
@@ -29,59 +87,12 @@ function ImagePreview({ images, onRemove }: { images: string[]; onRemove: (index
       }}
     >
       {images.map((url, index) => (
-        <Box
+        <ImagePreviewItem
           key={index}
-          sx={{
-            position: 'relative',
-            aspectRatio: '1',
-            borderRadius: 1,
-            overflow: 'hidden',
-            border: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          {url ? (
-            <Box
-              component="img"
-              src={url}
-              alt={`Preview ${index + 1}`}
-              sx={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-              }}
-            />
-          ) : (
-            <Box
-              sx={{
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: 'grey.200',
-              }}
-            >
-              <ImageIcon sx={{ fontSize: 40, color: 'text.secondary' }} />
-            </Box>
-          )}
-          <IconButton
-            size="small"
-            onClick={() => onRemove(index)}
-            sx={{
-              position: 'absolute',
-              top: 4,
-              right: 4,
-              bgcolor: 'error.main',
-              color: 'white',
-              '&:hover': {
-                bgcolor: 'error.dark',
-              },
-            }}
-          >
-            <Delete fontSize="small" />
-          </IconButton>
-        </Box>
+          url={url}
+          index={index}
+          onRemove={onRemove}
+        />
       ))}
     </Box>
   );
@@ -91,6 +102,18 @@ export function ImageUpload({ images, onImagesChange, maxImages = 5 }: ImageUplo
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const { showSuccess, showError } = useNotifications();
+
+  const performUpload = useCallback(
+    async (formData: FormData) => {
+      const response = await api.post('/upload/images', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data.urls || [];
+    },
+    []
+  );
 
   const handleUpload = useCallback(
     async (files: FileList | File[]) => {
@@ -109,13 +132,7 @@ export function ImageUpload({ images, onImagesChange, maxImages = 5 }: ImageUplo
           formData.append('images', file);
         });
 
-        const response = await api.post('/upload/images', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        const newUrls = response.data.urls || [];
+        const newUrls = await performUpload(formData);
         onImagesChange([...images, ...newUrls]);
         showSuccess(`${newUrls.length} image(s) uploadée(s) avec succès`);
       } catch (error: unknown) {
@@ -129,7 +146,7 @@ export function ImageUpload({ images, onImagesChange, maxImages = 5 }: ImageUplo
         setUploading(false);
       }
     },
-    [images, maxImages, onImagesChange, showSuccess, showError]
+    [images, maxImages, onImagesChange, showSuccess, showError, performUpload]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {

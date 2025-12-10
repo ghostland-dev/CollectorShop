@@ -10,6 +10,37 @@ interface LayoutProps {
   children: ReactNode;
 }
 
+// Helper component for user menu dropdown
+function UserMenu({ anchorEl, user, onClose, onLogout }: {
+  anchorEl: HTMLElement | null;
+  user: { firstName?: string; lastName?: string; email?: string } | null;
+  onClose: () => void;
+  onLogout: () => void;
+}) {
+  return (
+    <Menu
+      anchorEl={anchorEl}
+      open={Boolean(anchorEl)}
+      onClose={onClose}
+    >
+      <MenuItem disabled>
+        <Typography variant="body2">
+          {user?.firstName} {user?.lastName}
+        </Typography>
+      </MenuItem>
+      <MenuItem disabled>
+        <Typography variant="caption" color="text.secondary">
+          {user?.email}
+        </Typography>
+      </MenuItem>
+      <MenuItem onClick={onLogout}>
+        <Logout sx={{ mr: 1 }} />
+        Déconnexion
+      </MenuItem>
+    </Menu>
+  );
+}
+
 // Helper component for authenticated user menu
 function AuthenticatedMenu({ user, cartItemCount, onMenuClick, anchorEl, onCloseMenu, onLogout }: {
   user: { role: string; firstName?: string; lastName?: string; email?: string } | null;
@@ -74,26 +105,12 @@ function AuthenticatedMenu({ user, cartItemCount, onMenuClick, anchorEl, onClose
           {user?.firstName?.[0] || user?.email?.[0].toUpperCase()}
         </Avatar>
       </IconButton>
-      <Menu
+      <UserMenu
         anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
+        user={user}
         onClose={onCloseMenu}
-      >
-        <MenuItem disabled>
-          <Typography variant="body2">
-            {user?.firstName} {user?.lastName}
-          </Typography>
-        </MenuItem>
-        <MenuItem disabled>
-          <Typography variant="caption" color="text.secondary">
-            {user?.email}
-          </Typography>
-        </MenuItem>
-        <MenuItem onClick={onLogout}>
-          <Logout sx={{ mr: 1 }} />
-          Déconnexion
-        </MenuItem>
-      </Menu>
+        onLogout={onLogout}
+      />
     </>
   );
 }

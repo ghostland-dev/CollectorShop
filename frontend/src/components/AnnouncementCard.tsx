@@ -38,6 +38,20 @@ function CardImage({ announcement }: { announcement: Announcement }) {
   );
 }
 
+// Helper component for card price section
+function CardPriceSection({ price, status }: { price: number; status: string }) {
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Typography variant="h5" color="primary" fontWeight="bold">
+        {price.toFixed(2)} €
+      </Typography>
+      {status === 'SOLD' && (
+        <Chip label="Vendu" color="error" size="small" />
+      )}
+    </Box>
+  );
+}
+
 // Helper component for card content
 function CardContentSection({ announcement }: { announcement: Announcement }) {
   return (
@@ -80,14 +94,7 @@ function CardContentSection({ announcement }: { announcement: Announcement }) {
       >
         {announcement.description}
       </Typography>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5" color="primary" fontWeight="bold">
-          {announcement.price.toFixed(2)} €
-        </Typography>
-        {announcement.status === 'SOLD' && (
-          <Chip label="Vendu" color="error" size="small" />
-        )}
-      </Box>
+      <CardPriceSection price={announcement.price} status={announcement.status} />
       <Button variant="contained" fullWidth size="large">
         Voir les détails
       </Button>

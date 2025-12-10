@@ -22,6 +22,151 @@ import { useMutation } from '@tanstack/react-query';
 import { purchaseService } from '../services/purchase.service';
 import { useNotifications } from '../hooks/useNotifications';
 
+// Helper component for empty cart
+function EmptyCart({ onNavigate }: { onNavigate: () => void }) {
+  return (
+    <Container maxWidth="md">
+      <Paper sx={{ p: 6, mt: 4, textAlign: 'center' }}>
+        <ShoppingCart sx={{ fontSize: 80, color: 'text.secondary', mb: 2 }} />
+        <Typography variant="h5" gutterBottom>
+          Votre panier est vide
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Ajoutez des articles depuis le catalogue pour les voir apparaître ici
+        </Typography>
+        <Button variant="contained" onClick={onNavigate}>
+          Parcourir le catalogue
+        </Button>
+      </Paper>
+    </Container>
+  );
+}
+
+// Helper component for cart item
+function CartItem({ item, isProcessing, isAuthenticated, onBuy, onRemove }: {
+  item: { announcementId: string; title: string; price: number; image?: string; sellerName?: string };
+  isProcessing: boolean;
+  isAuthenticated: boolean;
+  onBuy: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <Card sx={{ mb: 2 }}>
+      <Box sx={{ display: 'flex' }}>
+        {item.image ? (
+          <CardMedia
+            component="img"
+            sx={{ width: 150, height: 150, objectFit: 'cover' }}
+            image={item.image}
+            alt={item.title}
+          />
+        ) : (
+          <Box
+            sx={{
+              width: 150,
+              height: 150,
+              bgcolor: 'grey.200',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ShoppingCart />
+          </Box>
+        )}
+        <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography variant="h6" component="h2" gutterBottom>
+              {item.title}
+            </Typography>
+            {item.sellerName && (
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Vendeur: {item.sellerName}
+              </Typography>
+            )}
+            <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
+              {item.price.toFixed(2)} €
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={isProcessing ? <CircularProgress size={16} /> : <Payment />}
+              onClick={onBuy}
+              disabled={isProcessing || !isAuthenticated}
+            >
+              Acheter
+            </Button>
+            <IconButton
+              color="error"
+              onClick={onRemove}
+              disabled={isProcessing}
+            >
+              <Delete />
+            </IconButton>
+          </Box>
+        </CardContent>
+      </Box>
+    </Card>
+  );
+}
+
+// Helper component for cart summary
+function CartSummary({ items, isAuthenticated, processingCount, onBuyAll, onLogin }: {
+  items: Array<{ announcementId: string; price: number }>;
+  isAuthenticated: boolean;
+  processingCount: number;
+  onBuyAll: () => void;
+  onLogin: () => void;
+}) {
+  const getTotal = () => items.reduce((sum, item) => sum + item.price, 0);
+  const total = getTotal();
+
+  return (
+    <Paper sx={{ p: 3, position: 'sticky', top: 20 }}>
+      <Typography variant="h6" gutterBottom>
+        Récapitulatif
+      </Typography>
+      <Divider sx={{ my: 2 }} />
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="body1">Sous-total ({items.length} article{items.length > 1 ? 's' : ''})</Typography>
+        <Typography variant="body1" fontWeight="bold">
+          {total.toFixed(2)} €
+        </Typography>
+      </Box>
+      <Divider sx={{ my: 2 }} />
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Typography variant="h6">Total</Typography>
+        <Typography variant="h6" color="primary" fontWeight="bold">
+          {total.toFixed(2)} €
+        </Typography>
+      </Box>
+      <Button
+        variant="contained"
+        fullWidth
+        size="large"
+        startIcon={<Payment />}
+        onClick={onBuyAll}
+        disabled={!isAuthenticated || processingCount > 0}
+      >
+        Acheter tout ({items.length})
+      </Button>
+      {!isAuthenticated && (
+        <Button
+          variant="outlined"
+          fullWidth
+          size="medium"
+          sx={{ mt: 2 }}
+          onClick={onLogin}
+        >
+          Se connecter
+        </Button>
+      )}
+    </Paper>
+  );
+}
+
 export function CartPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
@@ -39,13 +184,14 @@ export function CartPage() {
       });
       showSuccess('Achat créé avec succès !');
     },
-    onError: (error: any, announcementId) => {
+    onError: (error: unknown, announcementId) => {
       setProcessingItems((prev) => {
         const next = new Set(prev);
         next.delete(announcementId);
         return next;
       });
-      const message = error.response?.data?.error || error.response?.data?.message || 'Erreur lors de l\'achat';
+      const axiosError = error as { response?: { data?: { error?: string; message?: string } } };
+      const message = axiosError.response?.data?.error || axiosError.response?.data?.message || 'Erreur lors de l\'achat';
       showError(message);
     },
   });
@@ -74,22 +220,7 @@ export function CartPage() {
   };
 
   if (items.length === 0) {
-    return (
-      <Container maxWidth="md">
-        <Paper sx={{ p: 6, mt: 4, textAlign: 'center' }}>
-          <ShoppingCart sx={{ fontSize: 80, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="h5" gutterBottom>
-            Votre panier est vide
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Ajoutez des articles depuis le catalogue pour les voir apparaître ici
-          </Typography>
-          <Button variant="contained" onClick={() => navigate('/catalog')}>
-            Parcourir le catalogue
-          </Button>
-        </Paper>
-      </Container>
-    );
+    return <EmptyCart onNavigate={() => navigate('/catalog')} />;
   }
 
   return (
@@ -113,107 +244,24 @@ export function CartPage() {
         <Grid container spacing={3}>
           <Grid item xs={12} md={8}>
             {items.map((item) => (
-              <Card key={item.announcementId} sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex' }}>
-                  {item.image ? (
-                    <CardMedia
-                      component="img"
-                      sx={{ width: 150, height: 150, objectFit: 'cover' }}
-                      image={item.image}
-                      alt={item.title}
-                    />
-                  ) : (
-                    <Box
-                      sx={{
-                        width: 150,
-                        height: 150,
-                        bgcolor: 'grey.200',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <ShoppingCart />
-                    </Box>
-                  )}
-                  <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <Box>
-                      <Typography variant="h6" component="h2" gutterBottom>
-                        {item.title}
-                      </Typography>
-                      {item.sellerName && (
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Vendeur: {item.sellerName}
-                        </Typography>
-                      )}
-                      <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
-                        {item.price.toFixed(2)} €
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={processingItems.has(item.announcementId) ? <CircularProgress size={16} /> : <Payment />}
-                        onClick={() => handleBuyItem(item.announcementId)}
-                        disabled={processingItems.has(item.announcementId) || !isAuthenticated}
-                      >
-                        Acheter
-                      </Button>
-                      <IconButton
-                        color="error"
-                        onClick={() => removeItem(item.announcementId)}
-                        disabled={processingItems.has(item.announcementId)}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Box>
-                  </CardContent>
-                </Box>
-              </Card>
+              <CartItem
+                key={item.announcementId}
+                item={item}
+                isProcessing={processingItems.has(item.announcementId)}
+                isAuthenticated={isAuthenticated}
+                onBuy={() => handleBuyItem(item.announcementId)}
+                onRemove={() => removeItem(item.announcementId)}
+              />
             ))}
           </Grid>
           <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 3, position: 'sticky', top: 20 }}>
-              <Typography variant="h6" gutterBottom>
-                Récapitulatif
-              </Typography>
-              <Divider sx={{ my: 2 }} />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="body1">Sous-total ({items.length} article{items.length > 1 ? 's' : ''})</Typography>
-                <Typography variant="body1" fontWeight="bold">
-                  {getTotal().toFixed(2)} €
-                </Typography>
-              </Box>
-              <Divider sx={{ my: 2 }} />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h6">Total</Typography>
-                <Typography variant="h6" color="primary" fontWeight="bold">
-                  {getTotal().toFixed(2)} €
-                </Typography>
-              </Box>
-              <Button
-                variant="contained"
-                fullWidth
-                size="large"
-                startIcon={<Payment />}
-                onClick={handleBuyAll}
-                disabled={!isAuthenticated || processingItems.size > 0}
-              >
-                Acheter tout ({items.length})
-              </Button>
-              {!isAuthenticated && (
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  size="medium"
-                  sx={{ mt: 2 }}
-                  onClick={() => navigate('/login')}
-                >
-                  Se connecter
-                </Button>
-              )}
-            </Paper>
+            <CartSummary
+              items={items}
+              isAuthenticated={isAuthenticated}
+              processingCount={processingItems.size}
+              onBuyAll={handleBuyAll}
+              onLogin={() => navigate('/login')}
+            />
           </Grid>
         </Grid>
       </Paper>

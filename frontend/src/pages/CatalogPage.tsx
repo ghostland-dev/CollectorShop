@@ -87,11 +87,10 @@ function SearchFilters({ search, category, onSearchChange, onCategoryChange, onC
 }
 
 // Helper component for catalog content
-function CatalogContent({ data, isLoading, error, filteredCount }: {
+function CatalogContent({ data, isLoading, error }: {
   data: { announcements: unknown[] } | undefined;
   isLoading: boolean;
   error: Error | null;
-  filteredCount: number;
 }) {
   if (isLoading) {
     return <CatalogSkeleton />;
@@ -193,7 +192,6 @@ export function CatalogPage() {
         data={data}
         isLoading={isLoading}
         error={error}
-        filteredCount={filteredCount}
       />
     </Box>
   );
