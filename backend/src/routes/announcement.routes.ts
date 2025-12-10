@@ -159,8 +159,7 @@ function handleAnnouncementCreationError(error: unknown, userId: string | undefi
 
 // Helper function to create announcement with seller info
 async function createAnnouncementWithSeller(
-  data: Awaited<ReturnType<typeof createAnnouncementData>>,
-  userId: string
+  data: Awaited<ReturnType<typeof createAnnouncementData>>
 ) {
   return prisma.announcement.create({
     data,
@@ -187,7 +186,7 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
     }
     const data = createAnnouncementSchema.parse(req.body);
     const announcementData = await createAnnouncementData(user.userId, data);
-    const announcement = await createAnnouncementWithSeller(announcementData, user.userId);
+    const announcement = await createAnnouncementWithSeller(announcementData);
 
     logger.info('Annonce créée', { announcementId: announcement.id, sellerId: user.userId });
     res.status(201).json({ message: 'Annonce créée avec succès', announcement });
@@ -195,6 +194,29 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
     handleAnnouncementCreationError(error, req.user?.userId, res);
   }
 });
+
+// Helper function to fetch announcements with pagination
+async function fetchAnnouncementsWithPagination(where: Prisma.AnnouncementWhereInput, skip: number, take: number) {
+  return Promise.all([
+    prisma.announcement.findMany({
+      where,
+      include: {
+        seller: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          }
+        }
+      },
+      skip,
+      take,
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.announcement.count({ where }),
+  ]);
+}
 
 // Lister les annonces (public, avec filtres)
 router.get('/', async (req: Request, res: Response): Promise<void> => {
@@ -212,25 +234,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       search: search as string | undefined,
     });
 
-    const [announcements, total] = await Promise.all([
-      prisma.announcement.findMany({
-        where,
-        include: {
-          seller: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-            }
-          }
-        },
-        skip,
-        take: limitNum,
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.announcement.count({ where }),
-    ]);
+    const [announcements, total] = await fetchAnnouncementsWithPagination(where, skip, limitNum);
 
     res.json({
       announcements,
@@ -316,6 +320,29 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// Helper function to check announcement ownership
+function canUserEditAnnouncement(existingAnnouncement: { sellerId: string }, user: { userId: string; role: string }): boolean {
+  return existingAnnouncement.sellerId === user.userId || user.role === 'ADMIN';
+}
+
+// Helper function to update announcement with seller info
+async function updateAnnouncementWithSeller(id: string, data: z.infer<typeof updateAnnouncementSchema>) {
+  return prisma.announcement.update({
+    where: { id },
+    data,
+    include: {
+      seller: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        }
+      }
+    }
+  });
+}
+
 // Mettre à jour une annonce (propriétaire uniquement)
 router.put('/:id', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -327,7 +354,6 @@ router.put('/:id', authenticate, authorize('SELLER', 'ADMIN'), async (req: Reque
     }
     const data = updateAnnouncementSchema.parse(req.body);
 
-    // Vérifier que l'annonce existe et appartient à l'utilisateur
     const existingAnnouncement = await prisma.announcement.findUnique({
       where: { id }
     });
@@ -337,32 +363,15 @@ router.put('/:id', authenticate, authorize('SELLER', 'ADMIN'), async (req: Reque
       return;
     }
 
-    if (existingAnnouncement.sellerId !== user.userId && user.role !== 'ADMIN') {
+    if (!canUserEditAnnouncement(existingAnnouncement, user)) {
       res.status(403).json({ error: 'Vous n\'êtes pas autorisé à modifier cette annonce' });
       return;
     }
 
-    const announcement = await prisma.announcement.update({
-      where: { id },
-      data,
-      include: {
-        seller: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          }
-        }
-      }
-    });
+    const announcement = await updateAnnouncementWithSeller(id, data);
 
     logger.info('Annonce mise à jour', { announcementId: id });
-
-    res.json({
-      message: 'Annonce mise à jour avec succès',
-      announcement
-    });
+    res.json({ message: 'Annonce mise à jour avec succès', announcement });
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Données invalides', details: error.errors });

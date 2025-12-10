@@ -67,6 +67,55 @@ async function getPurchaseWithDetails(purchaseId: string) {
   });
 }
 
+// Helper function to create purchase with seller info
+async function createPurchaseWithSeller(announcementId: string, buyerId: string, amount: number) {
+  return prisma.purchase.create({
+    data: {
+      announcementId,
+      buyerId,
+      amount,
+      status: 'PENDING',
+    },
+    include: {
+      announcement: {
+        include: {
+          seller: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+// Helper function to handle purchase creation errors
+function handlePurchaseCreationError(error: unknown, res: Response): void {
+  if (error instanceof z.ZodError) {
+    res.status(400).json({ error: 'Données invalides', details: error.errors });
+    return;
+  }
+  if (error instanceof Error) {
+    const errorMessages: Record<string, { status: number; message: string }> = {
+      'ANNOUNCEMENT_NOT_FOUND': { status: 404, message: 'Annonce introuvable' },
+      'ANNOUNCEMENT_NOT_AVAILABLE': { status: 400, message: 'Cette annonce n\'est plus disponible à la vente' },
+      'CANNOT_BUY_OWN_ANNOUNCEMENT': { status: 400, message: 'Vous ne pouvez pas acheter votre propre annonce' },
+      'PURCHASE_ALREADY_EXISTS': { status: 400, message: 'Vous avez déjà un achat en attente pour cette annonce' },
+    };
+    const errorInfo = errorMessages[error.message];
+    if (errorInfo) {
+      res.status(errorInfo.status).json({ error: errorInfo.message });
+      return;
+    }
+  }
+  logger.error('Erreur lors de la création de l\'achat', { error });
+  res.status(500).json({ error: 'Erreur lors de la création de l\'achat' });
+}
+
 // Créer un achat (BUYER uniquement)
 router.post('/', authenticate, authorize('BUYER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -78,59 +127,39 @@ router.post('/', authenticate, authorize('BUYER', 'ADMIN'), async (req: Request,
     const data = createPurchaseSchema.parse(req.body);
 
     const announcement = await validateAnnouncementForPurchase(data.announcementId, user.userId);
-
-    // Créer l'achat
-    const purchase = await prisma.purchase.create({
-      data: {
-        announcementId: data.announcementId,
-        buyerId: user.userId,
-        amount: announcement.price,
-        status: 'PENDING',
-      },
-      include: {
-        announcement: {
-          include: {
-            seller: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const purchase = await createPurchaseWithSeller(data.announcementId, user.userId, announcement.price);
 
     logger.info('Achat créé', { purchaseId: purchase.id, announcementId: data.announcementId, buyerId: user.userId });
-
-    res.status(201).json({
-      message: 'Achat créé avec succès',
-      purchase,
-    });
+    res.status(201).json({ message: 'Achat créé avec succès', purchase });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({ error: 'Données invalides', details: error.errors });
-      return;
-    }
-    if (error instanceof Error) {
-      const errorMessages: Record<string, { status: number; message: string }> = {
-        'ANNOUNCEMENT_NOT_FOUND': { status: 404, message: 'Annonce introuvable' },
-        'ANNOUNCEMENT_NOT_AVAILABLE': { status: 400, message: 'Cette annonce n\'est plus disponible à la vente' },
-        'CANNOT_BUY_OWN_ANNOUNCEMENT': { status: 400, message: 'Vous ne pouvez pas acheter votre propre annonce' },
-        'PURCHASE_ALREADY_EXISTS': { status: 400, message: 'Vous avez déjà un achat en attente pour cette annonce' },
-      };
-      const errorInfo = errorMessages[error.message];
-      if (errorInfo) {
-        res.status(errorInfo.status).json({ error: errorInfo.message });
-        return;
-      }
-    }
-    logger.error('Erreur lors de la création de l\'achat', { error });
-    res.status(500).json({ error: 'Erreur lors de la création de l\'achat' });
+    handlePurchaseCreationError(error, res);
   }
 });
+
+// Helper function to validate purchase confirmation
+function validatePurchaseConfirmation(purchase: { buyerId: string; status: string }, userId: string): string | null {
+  if (purchase.buyerId !== userId) {
+    return 'Vous n\'êtes pas autorisé à confirmer cet achat';
+  }
+  if (purchase.status !== 'PENDING') {
+    return 'Cet achat a déjà été traité';
+  }
+  return null;
+}
+
+// Helper function to complete purchase transaction
+async function completePurchaseTransaction(purchaseId: string, announcementId: string) {
+  return prisma.$transaction([
+    prisma.purchase.update({
+      where: { id: purchaseId },
+      data: { status: 'COMPLETED' },
+    }),
+    prisma.announcement.update({
+      where: { id: announcementId },
+      data: { status: 'SOLD' },
+    }),
+  ]);
+}
 
 // Confirmer un achat (simulation de paiement)
 router.post('/:id/confirm', authenticate, authorize('BUYER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
@@ -152,36 +181,17 @@ router.post('/:id/confirm', authenticate, authorize('BUYER', 'ADMIN'), async (re
       return;
     }
 
-    if (purchase.buyerId !== user.userId) {
-      res.status(403).json({ error: 'Vous n\'êtes pas autorisé à confirmer cet achat' });
+    const validationError = validatePurchaseConfirmation(purchase, user.userId);
+    if (validationError) {
+      res.status(validationError.includes('autorisé') ? 403 : 400).json({ error: validationError });
       return;
     }
 
-    if (purchase.status !== 'PENDING') {
-      res.status(400).json({ error: 'Cet achat a déjà été traité' });
-      return;
-    }
-
-    // Mettre à jour le statut de l'achat et de l'annonce
-    await prisma.$transaction([
-      prisma.purchase.update({
-        where: { id },
-        data: { status: 'COMPLETED' },
-      }),
-      prisma.announcement.update({
-        where: { id: purchase.announcementId },
-        data: { status: 'SOLD' },
-      }),
-    ]);
-
+    await completePurchaseTransaction(id, purchase.announcementId);
     logger.info('Achat confirmé', { purchaseId: id, buyerId: user.userId });
 
     const updatedPurchase = await getPurchaseWithDetails(id);
-
-    res.json({
-      message: 'Achat confirmé avec succès',
-      purchase: updatedPurchase,
-    });
+    res.json({ message: 'Achat confirmé avec succès', purchase: updatedPurchase });
   } catch (error) {
     logger.error('Erreur lors de la confirmation de l\'achat', { error });
     res.status(500).json({ error: 'Erreur lors de la confirmation de l\'achat' });
