@@ -126,8 +126,9 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
     }
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2003') {
       const prismaError = error as { code: string; meta?: unknown };
+      const userId = user?.userId || 'unknown';
       logger.error('Erreur de référence: utilisateur invalide', { 
-        userId: user.userId,
+        userId,
         error: prismaError.meta
       });
       res.status(400).json({ 
@@ -136,10 +137,11 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
       });
       return;
     }
+    const userId = user?.userId || 'unknown';
     logger.error('Erreur lors de la création de l\'annonce', { 
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      userId: user.userId
+      userId
     });
     res.status(500).json({ 
       error: 'Erreur lors de la création de l\'annonce',
