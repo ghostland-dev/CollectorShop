@@ -91,39 +91,62 @@ async function createAnnouncementData(userId: string, data: z.infer<typeof creat
   };
 }
 
-// Helper function to handle announcement creation errors
-function handleAnnouncementCreationError(error: unknown, userId: string | undefined, res: Response): void {
-  if (error instanceof z.ZodError) {
-    res.status(400).json({ error: 'Données invalides', details: error.errors });
-    return;
-  }
-  if (error instanceof Error && error.message === 'USER_NOT_FOUND') {
-    res.status(404).json({ error: 'Utilisateur non trouvé' });
-    return;
-  }
-  if (error && typeof error === 'object' && 'code' in error && error.code === 'P2003') {
-    const prismaError = error as { code: string; meta?: unknown };
-    const userIdValue = userId || 'unknown';
-    logger.error('Erreur de référence: utilisateur invalide', { 
-      userId: userIdValue,
-      error: prismaError.meta
-    });
-    res.status(400).json({ 
-      error: 'Erreur de référence: votre compte utilisateur n\'existe plus. Veuillez vous reconnecter.',
-      code: 'USER_NOT_FOUND'
-    });
-    return;
-  }
-  const userIdValue = userId || 'unknown';
+// Helper function to handle Zod errors
+function handleZodError(error: z.ZodError, res: Response): boolean {
+  res.status(400).json({ error: 'Données invalides', details: error.errors });
+  return true;
+}
+
+// Helper function to handle user not found error
+function handleUserNotFoundError(res: Response): boolean {
+  res.status(404).json({ error: 'Utilisateur non trouvé' });
+  return true;
+}
+
+// Helper function to handle Prisma P2003 error
+function handlePrismaP2003Error(error: { code: string; meta?: unknown }, userId: string, res: Response): boolean {
+  logger.error('Erreur de référence: utilisateur invalide', { 
+    userId,
+    error: error.meta
+  });
+  res.status(400).json({ 
+    error: 'Erreur de référence: votre compte utilisateur n\'existe plus. Veuillez vous reconnecter.',
+    code: 'USER_NOT_FOUND'
+  });
+  return true;
+}
+
+// Helper function to handle generic errors
+function handleGenericError(error: unknown, userId: string, res: Response): void {
   logger.error('Erreur lors de la création de l\'annonce', { 
     error: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
-    userId: userIdValue
+    userId
   });
   res.status(500).json({ 
     error: 'Erreur lors de la création de l\'annonce',
     message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
   });
+}
+
+// Helper function to handle announcement creation errors
+function handleAnnouncementCreationError(error: unknown, userId: string | undefined, res: Response): void {
+  const userIdValue = userId || 'unknown';
+  
+  if (error instanceof z.ZodError) {
+    handleZodError(error, res);
+    return;
+  }
+  if (error instanceof Error && error.message === 'USER_NOT_FOUND') {
+    handleUserNotFoundError(res);
+    return;
+  }
+  if (error && typeof error === 'object' && 'code' in error && error.code === 'P2003') {
+    const prismaError = error as { code: string; meta?: unknown };
+    handlePrismaP2003Error(prismaError, userIdValue, res);
+    return;
+  }
+  handleGenericError(error, userIdValue, res);
 }
 
 // Créer une annonce (SELLER uniquement)

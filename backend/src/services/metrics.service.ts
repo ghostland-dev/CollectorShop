@@ -3,13 +3,13 @@ import { logger } from '../utils/logger';
 
 class MetricsService {
   private register: Registry;
-  private httpRequestDuration: Histogram<string>;
-  private httpRequestTotal: Counter<string>;
-  private httpErrorsTotal: Counter<string>;
-  private activeConnections: Gauge<string>;
-  private databaseQueryDuration: Histogram<string>;
-  private cacheHits: Counter<string>;
-  private cacheMisses: Counter<string>;
+  private httpRequestDuration!: Histogram<string>;
+  private httpRequestTotal!: Counter<string>;
+  private httpErrorsTotal!: Counter<string>;
+  private activeConnections!: Gauge<string>;
+  private databaseQueryDuration!: Histogram<string>;
+  private cacheHits!: Counter<string>;
+  private cacheMisses!: Counter<string>;
 
   private initializeHttpMetrics(): void {
     this.httpRequestDuration = new Histogram({

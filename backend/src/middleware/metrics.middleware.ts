@@ -22,10 +22,16 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
     metricsService.decrementActiveConnections();
 
     // Call original end
-    if (cb) {
+    if (cb && encoding) {
       return originalEnd(chunk, encoding, cb);
     }
-    return originalEnd(chunk, encoding);
+    if (encoding) {
+      return originalEnd(chunk, encoding);
+    }
+    if (cb) {
+      return originalEnd(chunk, cb);
+    }
+    return originalEnd(chunk);
   } as typeof res.end;
 
   next();

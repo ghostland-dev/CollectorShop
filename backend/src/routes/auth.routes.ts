@@ -22,6 +22,15 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Mot de passe requis'),
 });
 
+// Helper function to create user payload
+function createUserPayload(user: { id: string; email: string; role: string }): { userId: string; email: string; role: string } {
+  return {
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+  };
+}
+
 // Helper function to handle user registration
 async function handleUserRegistration(data: z.infer<typeof registerSchema>) {
   const existingUser = await prisma.user.findUnique({
