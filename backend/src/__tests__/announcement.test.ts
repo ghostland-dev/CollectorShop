@@ -26,12 +26,17 @@ async function createTestSeller(): Promise<{ id: string; token: string }> {
   return { id: seller.id, token: loginResponse.body.accessToken };
 }
 
+// Helper to setup test seller
+async function setupTestSeller(): Promise<{ id: string; token: string }> {
+  return createTestSeller();
+}
+
 describe('Announcement Routes', () => {
   let sellerToken: string;
   let sellerId: string;
 
   beforeAll(async () => {
-    const seller = await createTestSeller();
+    const seller = await setupTestSeller();
     sellerId = seller.id;
     sellerToken = seller.token;
   });

@@ -1,5 +1,4 @@
-import { Request } from 'express';
-import { JwtPayload } from '../utils/auth';
+import type { JwtPayload } from '../utils/auth';
 
 declare module 'express-serve-static-core' {
   interface Request {

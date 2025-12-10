@@ -11,9 +11,14 @@ async function createTestUser(email: string, password: string) {
     .send({ email, password });
 }
 
+// Helper to setup test database
+async function setupTestDatabase(): Promise<void> {
+  await prisma.user.deleteMany();
+}
+
 describe('Auth Routes', () => {
   beforeAll(async () => {
-    await prisma.user.deleteMany();
+    await setupTestDatabase();
   });
 
   afterAll(async () => {
@@ -80,9 +85,14 @@ describe('Auth Routes', () => {
     });
   });
 
+// Helper to setup login test user
+async function setupLoginTestUser(): Promise<void> {
+  await createTestUser('login@example.com', 'password123');
+}
+
   describe('POST /api/auth/login', () => {
     beforeEach(async () => {
-      await createTestUser('login@example.com', 'password123');
+      await setupLoginTestUser();
     });
 
     it('devrait connecter un utilisateur avec des identifiants valides', async () => {

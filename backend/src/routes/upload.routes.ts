@@ -38,7 +38,7 @@ router.post(
 
       const url = await minioService.uploadFile(req.file, 'announcements');
       
-      logger.info('Image uploadée avec succès', { url, userId: (req as any).user?.userId });
+      logger.info('Image uploadée avec succès', { url, userId: req.user?.userId });
 
       res.json({
         message: 'Image uploadée avec succès',

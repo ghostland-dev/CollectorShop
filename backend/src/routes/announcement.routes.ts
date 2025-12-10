@@ -68,6 +68,64 @@ const createAnnouncementSchema = z.object({
 
 const updateAnnouncementSchema = createAnnouncementSchema.partial();
 
+// Helper function to create announcement data
+async function createAnnouncementData(userId: string, data: z.infer<typeof createAnnouncementSchema>) {
+  const seller = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!seller) {
+    throw new Error('USER_NOT_FOUND');
+  }
+
+  const validImages = filterValidImageUrls(data.images || []);
+
+  return {
+    title: data.title,
+    description: data.description,
+    price: data.price,
+    category: data.category,
+    images: validImages,
+    sellerId: userId,
+    status: 'PUBLISHED' as const,
+  };
+}
+
+// Helper function to handle announcement creation errors
+function handleAnnouncementCreationError(error: unknown, userId: string | undefined, res: Response): void {
+  if (error instanceof z.ZodError) {
+    res.status(400).json({ error: 'Données invalides', details: error.errors });
+    return;
+  }
+  if (error instanceof Error && error.message === 'USER_NOT_FOUND') {
+    res.status(404).json({ error: 'Utilisateur non trouvé' });
+    return;
+  }
+  if (error && typeof error === 'object' && 'code' in error && error.code === 'P2003') {
+    const prismaError = error as { code: string; meta?: unknown };
+    const userIdValue = userId || 'unknown';
+    logger.error('Erreur de référence: utilisateur invalide', { 
+      userId: userIdValue,
+      error: prismaError.meta
+    });
+    res.status(400).json({ 
+      error: 'Erreur de référence: votre compte utilisateur n\'existe plus. Veuillez vous reconnecter.',
+      code: 'USER_NOT_FOUND'
+    });
+    return;
+  }
+  const userIdValue = userId || 'unknown';
+  logger.error('Erreur lors de la création de l\'annonce', { 
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+    userId: userIdValue
+  });
+  res.status(500).json({ 
+    error: 'Erreur lors de la création de l\'annonce',
+    message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
+  });
+}
+
 // Créer une annonce (SELLER uniquement)
 router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -77,30 +135,10 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
       return;
     }
     const data = createAnnouncementSchema.parse(req.body);
-
-    // Vérifier que l'utilisateur existe
-    const seller = await prisma.user.findUnique({
-      where: { id: user.userId },
-    });
-
-    if (!seller) {
-      res.status(404).json({ error: 'Utilisateur non trouvé' });
-      return;
-    }
-
-    // Filtrer les images vides et valider les URLs
-    const validImages = filterValidImageUrls(data.images || []);
+    const announcementData = await createAnnouncementData(user.userId, data);
 
     const announcement = await prisma.announcement.create({
-      data: {
-        title: data.title,
-        description: data.description,
-        price: data.price,
-        category: data.category,
-        images: validImages,
-        sellerId: user.userId,
-        status: 'PUBLISHED',
-      },
+      data: announcementData,
       include: {
         seller: {
           select: {
@@ -120,33 +158,7 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
       announcement
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({ error: 'Données invalides', details: error.errors });
-      return;
-    }
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2003') {
-      const prismaError = error as { code: string; meta?: unknown };
-      const userId = user?.userId || 'unknown';
-      logger.error('Erreur de référence: utilisateur invalide', { 
-        userId,
-        error: prismaError.meta
-      });
-      res.status(400).json({ 
-        error: 'Erreur de référence: votre compte utilisateur n\'existe plus. Veuillez vous reconnecter.',
-        code: 'USER_NOT_FOUND'
-      });
-      return;
-    }
-    const userId = user?.userId || 'unknown';
-    logger.error('Erreur lors de la création de l\'annonce', { 
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      userId
-    });
-    res.status(500).json({ 
-      error: 'Erreur lors de la création de l\'annonce',
-      message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
-    });
+    handleAnnouncementCreationError(error, req.user?.userId, res);
   }
 });
 

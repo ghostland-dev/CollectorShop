@@ -77,40 +77,7 @@ router.post('/', authenticate, authorize('BUYER', 'ADMIN'), async (req: Request,
     }
     const data = createPurchaseSchema.parse(req.body);
 
-    // Vérifier que l'annonce existe et est disponible
-    const announcement = await prisma.announcement.findUnique({
-      where: { id: data.announcementId },
-      include: { seller: true },
-    });
-
-    if (!announcement) {
-      res.status(404).json({ error: 'Annonce introuvable' });
-      return;
-    }
-
-    if (announcement.status !== 'PUBLISHED') {
-      res.status(400).json({ error: 'Cette annonce n\'est plus disponible à la vente' });
-      return;
-    }
-
-    if (announcement.sellerId === user.userId) {
-      res.status(400).json({ error: 'Vous ne pouvez pas acheter votre propre annonce' });
-      return;
-    }
-
-    // Vérifier si un achat en attente existe déjà
-    const existingPurchase = await prisma.purchase.findFirst({
-      where: {
-        announcementId: data.announcementId,
-        buyerId: user.userId,
-        status: 'PENDING',
-      },
-    });
-
-    if (existingPurchase) {
-      res.status(400).json({ error: 'Vous avez déjà un achat en attente pour cette annonce' });
-      return;
-    }
+    const announcement = await validateAnnouncementForPurchase(data.announcementId, user.userId);
 
     // Créer l'achat
     const purchase = await prisma.purchase.create({
@@ -146,6 +113,19 @@ router.post('/', authenticate, authorize('BUYER', 'ADMIN'), async (req: Request,
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Données invalides', details: error.errors });
       return;
+    }
+    if (error instanceof Error) {
+      const errorMessages: Record<string, { status: number; message: string }> = {
+        'ANNOUNCEMENT_NOT_FOUND': { status: 404, message: 'Annonce introuvable' },
+        'ANNOUNCEMENT_NOT_AVAILABLE': { status: 400, message: 'Cette annonce n\'est plus disponible à la vente' },
+        'CANNOT_BUY_OWN_ANNOUNCEMENT': { status: 400, message: 'Vous ne pouvez pas acheter votre propre annonce' },
+        'PURCHASE_ALREADY_EXISTS': { status: 400, message: 'Vous avez déjà un achat en attente pour cette annonce' },
+      };
+      const errorInfo = errorMessages[error.message];
+      if (errorInfo) {
+        res.status(errorInfo.status).json({ error: errorInfo.message });
+        return;
+      }
     }
     logger.error('Erreur lors de la création de l\'achat', { error });
     res.status(500).json({ error: 'Erreur lors de la création de l\'achat' });
