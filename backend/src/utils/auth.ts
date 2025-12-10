@@ -4,8 +4,8 @@ import { Request, Response, NextFunction } from 'express';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'change-me-in-production-refresh';
-const JWT_EXPIRES_IN: string | number = process.env.JWT_EXPIRES_IN || '15m';
-const JWT_REFRESH_EXPIRES_IN: string | number = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '15m') as string;
+const JWT_REFRESH_EXPIRES_IN = (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as string;
 
 export interface JwtPayload {
   userId: string;
@@ -22,11 +22,13 @@ export const comparePassword = async (password: string, hash: string): Promise<b
 };
 
 export const generateAccessToken = (payload: JwtPayload): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN as string });
+  const options: SignOptions = { expiresIn: JWT_EXPIRES_IN };
+  return jwt.sign(payload, JWT_SECRET, options);
 };
 
 export const generateRefreshToken = (payload: JwtPayload): string => {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN as string });
+  const options: SignOptions = { expiresIn: JWT_REFRESH_EXPIRES_IN };
+  return jwt.sign(payload, JWT_REFRESH_SECRET, options);
 };
 
 export const verifyToken = (token: string): JwtPayload => {
