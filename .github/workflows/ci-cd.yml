@@ -251,9 +251,18 @@ jobs:
         with:
           args: --severity-threshold=high --sarif-file-output=snyk.sarif
 
+      - name: Check if Snyk SARIF file exists
+        id: check-snyk-sarif
+        run: |
+          if [ -f snyk.sarif ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload Snyk results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
-        if: always() && steps.snyk.outcome == 'success'
+        if: always() && steps.snyk.outcome == 'success' && steps.check-snyk-sarif.outputs.exists == 'true'
         continue-on-error: true
         with:
           sarif_file: snyk.sarif
@@ -292,14 +301,14 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-backend-results.sarif') != ''
         continue-on-error: true
         with:
           sarif_file: trivy-backend-results.sarif
 
       - name: Upload Trivy frontend results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-frontend-results.sarif') != ''
         continue-on-error: true
         with:
           sarif_file: trivy-frontend-results.sarif
