@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import { CloudUpload, Delete, Image as ImageIcon } from '@mui/icons-material';
 import { useNotifications } from '../hooks/useNotifications';
-import { apiClient as api } from '../services/api';
+import { useAuthStore } from '../stores/authStore';
 
 interface ImageUploadProps {
   images: string[];
@@ -105,12 +105,29 @@ export function ImageUpload({ images, onImagesChange, maxImages = 5 }: ImageUplo
 
   const performUpload = useCallback(
     async (formData: FormData) => {
-      const response = await api.post('/upload/images', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      // Pour FormData, ne pas définir Content-Type, le navigateur le fera automatiquement avec la boundary
+      const token = useAuthStore.getState().token;
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const url = `${API_BASE_URL}/upload/images`;
+      
+      const headers: HeadersInit = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers,
       });
-      return response.data.urls || [];
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'Erreur lors de l\'upload');
+      }
+
+      const data = await response.json();
+      return data.urls || [];
     },
     []
   );
@@ -136,11 +153,7 @@ export function ImageUpload({ images, onImagesChange, maxImages = 5 }: ImageUplo
         onImagesChange([...images, ...newUrls]);
         showSuccess(`${newUrls.length} image(s) uploadée(s) avec succès`);
       } catch (error: unknown) {
-        const axiosError = error as { response?: { data?: { error?: string; message?: string } } };
-        const message =
-          axiosError.response?.data?.error ||
-          axiosError.response?.data?.message ||
-          'Erreur lors de l\'upload des images';
+        const message = error instanceof Error ? error.message : 'Erreur lors de l\'upload des images';
         showError(message);
       } finally {
         setUploading(false);

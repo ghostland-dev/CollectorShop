@@ -51,8 +51,11 @@ export function MyPurchasesPage() {
       queryClient.invalidateQueries({ queryKey: ['myPurchases'] });
     },
     onError: (error: unknown) => {
-      const axiosError = error as { response?: { data?: { error?: string } } };
-      showError(axiosError.response?.data?.error || 'Erreur lors de la mise à jour');
+      if (error instanceof Error) {
+        showError(error.message || 'Erreur lors de la mise à jour');
+      } else {
+        showError('Erreur lors de la mise à jour');
+      }
     },
   });
 

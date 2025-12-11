@@ -51,8 +51,7 @@ export function MyAnnouncementsPage() {
       setAnnouncementToDelete(null);
     },
     onError: (error: unknown) => {
-      const axiosError = error as { response?: { data?: { error?: string; message?: string } } };
-      const message = axiosError.response?.data?.error || axiosError.response?.data?.message || 'Erreur lors de la suppression';
+      const message = error instanceof Error ? error.message : 'Erreur lors de la suppression';
       showError(message);
     },
   });

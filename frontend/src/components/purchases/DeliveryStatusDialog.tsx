@@ -8,8 +8,8 @@ import {
   TextField,
   MenuItem,
 } from '@mui/material';
-import { Purchase, DeliveryStatus } from '../../services/purchase.service';
-import { DELIVERY_STATUS_LABELS } from '../../utils/deliveryStatus';
+import { Purchase } from '../../services/purchase.service';
+import { DeliveryStatus, DELIVERY_STATUS_LABELS } from '../../utils/deliveryStatus';
 
 interface DeliveryStatusDialogProps {
   open: boolean;

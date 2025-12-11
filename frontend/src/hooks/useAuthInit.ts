@@ -5,7 +5,7 @@ import { authService } from '../services/auth.service';
 /**
  * Hook pour initialiser l'authentification au chargement de l'application
  * Récupère le profil utilisateur si on a un token mais pas d'utilisateur
- * Le refresh automatique est géré par l'intercepteur axios
+ * Le refresh automatique est géré par le client API
  */
 export function useAuthInit() {
   const { token, refreshToken, user, setAuth } = useAuthStore();

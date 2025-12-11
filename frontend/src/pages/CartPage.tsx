@@ -191,8 +191,7 @@ export function CartPage() {
         next.delete(announcementId);
         return next;
       });
-      const axiosError = error as { response?: { data?: { error?: string; message?: string } } };
-      const message = axiosError.response?.data?.error || axiosError.response?.data?.message || 'Erreur lors de l\'achat';
+      const message = error instanceof Error ? error.message : 'Erreur lors de l\'achat';
       showError(message);
     },
   });

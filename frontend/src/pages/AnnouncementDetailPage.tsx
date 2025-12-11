@@ -18,7 +18,7 @@ import { purchaseService } from '../services/purchase.service';
 import { useCartStore } from '../stores/cartStore';
 import { useAuthStore } from '../stores/authStore';
 import { useNotifications } from '../hooks/useNotifications';
-import { AxiosError } from 'axios';
+import { ApiError } from '../services/api';
 
 // Helper component for announcement image
 function AnnouncementImage({ announcement }: { announcement: Announcement }) {
@@ -124,11 +124,10 @@ function AnnouncementInfo({ announcement, canPurchase, onAddToCart, onBuyNow, is
 
 // Helper function to extract error message
 function getErrorMessage(error: unknown): string {
-  if (error && typeof error === 'object' && 'response' in error) {
-    const axiosError = error as AxiosError<{ error?: string; message?: string }>;
-    return axiosError.response?.data?.error || axiosError.response?.data?.message || 'Erreur inconnue';
+  if (error instanceof ApiError) {
+    return error.data?.error || error.data?.message || error.message;
   }
-  return 'Erreur inconnue';
+  return error instanceof Error ? error.message : 'Erreur inconnue';
 }
 
 // Helper component for management actions

@@ -53,8 +53,11 @@ export function ChatPage() {
       showSuccess(t('chat.send') + ' ' + t('common.success'));
     },
     onError: (error: unknown) => {
-      const axiosError = error as { response?: { data?: { error?: string } } };
-      showError(axiosError.response?.data?.error || t('common.error'));
+      if (error instanceof Error) {
+        showError(error.message || t('common.error'));
+      } else {
+        showError(t('common.error'));
+      }
     },
   });
 

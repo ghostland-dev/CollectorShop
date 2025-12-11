@@ -97,8 +97,11 @@ export function CheckoutPage() {
       navigate('/purchases/success');
     },
     onError: (error: unknown) => {
-      const axiosError = error as { response?: { data?: { error?: string } } };
-      showError(axiosError.response?.data?.error || 'Erreur lors du paiement');
+      if (error instanceof Error) {
+        showError(error.message || 'Erreur lors du paiement');
+      } else {
+        showError('Erreur lors du paiement');
+      }
     },
   });
 

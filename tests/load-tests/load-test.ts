@@ -8,8 +8,6 @@
  * Artillery utilise ce fichier comme "processor" pour les fonctions personnalisées
  */
 
-import axios, { AxiosResponse } from 'axios';
-
 interface Announcement {
   id: string;
   title: string;
@@ -46,19 +44,24 @@ async function getCatalog(context: ArtilleryContext, events: ArtilleryEvents): P
   const baseUrl = context.vars.baseUrl;
 
   try {
-    const response: AxiosResponse<AnnouncementsResponse> = await axios.get(
-      `${baseUrl}/announcements`,
-      {
-        params: { limit: 20 },
-        timeout: 5000,
-      }
-    );
+    const url = new URL(`${baseUrl}/announcements`);
+    url.searchParams.append('limit', '20');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(url.toString(), {
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
 
     const duration = Date.now() - startTime;
+    const data: AnnouncementsResponse = await response.json();
 
     // Vérifications
     const isSuccess = response.status === 200 && duration < 200;
-    const hasData = response.data.announcements && Array.isArray(response.data.announcements);
+    const hasData = data.announcements && Array.isArray(data.announcements);
 
     // Émettre les métriques
     events.emit('counter', 'catalog.requests', 1);
@@ -68,8 +71,8 @@ async function getCatalog(context: ArtilleryContext, events: ArtilleryEvents): P
       events.emit('counter', 'catalog.success', 1);
       
       // Stocker l'ID de la première annonce pour le test suivant
-      if (response.data.announcements.length > 0) {
-        context.vars.announcementId = response.data.announcements[0].id;
+      if (data.announcements.length > 0) {
+        context.vars.announcementId = data.announcements[0].id;
       }
     } else {
       events.emit('counter', 'catalog.errors', 1);
@@ -79,9 +82,10 @@ async function getCatalog(context: ArtilleryContext, events: ArtilleryEvents): P
     events.emit('counter', 'catalog.errors', 1);
     events.emit('histogram', 'catalog.response_time', duration);
     
-    if (axios.isAxiosError(error)) {
-      const statusCode = error.response?.status || 'unknown';
-      events.emit('counter', `catalog.errors.${statusCode}`, 1);
+    if (error instanceof Error && error.name === 'AbortError') {
+      events.emit('counter', 'catalog.errors.timeout', 1);
+    } else {
+      events.emit('counter', 'catalog.errors.unknown', 1);
     }
   }
 }
@@ -100,14 +104,17 @@ async function getAnnouncement(context: ArtilleryContext, events: ArtilleryEvent
   const baseUrl = context.vars.baseUrl;
 
   try {
-    const response: AxiosResponse<Announcement> = await axios.get(
-      `${baseUrl}/announcements/${announcementId}`,
-      {
-        timeout: 5000,
-      }
-    );
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(`${baseUrl}/announcements/${announcementId}`, {
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
 
     const duration = Date.now() - startTime;
+    const data: Announcement = await response.json();
 
     // Vérifications
     const isSuccess = response.status === 200 && duration < 150;
@@ -126,9 +133,10 @@ async function getAnnouncement(context: ArtilleryContext, events: ArtilleryEvent
     events.emit('counter', 'announcement.errors', 1);
     events.emit('histogram', 'announcement.response_time', duration);
     
-    if (axios.isAxiosError(error)) {
-      const statusCode = error.response?.status || 'unknown';
-      events.emit('counter', `announcement.errors.${statusCode}`, 1);
+    if (error instanceof Error && error.name === 'AbortError') {
+      events.emit('counter', 'announcement.errors.timeout', 1);
+    } else {
+      events.emit('counter', 'announcement.errors.unknown', 1);
     }
   }
 }
@@ -144,15 +152,21 @@ async function searchCatalog(context: ArtilleryContext, events: ArtilleryEvents)
   const searchTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
 
   try {
-    const response: AxiosResponse<AnnouncementsResponse> = await axios.get(
-      `${baseUrl}/announcements`,
-      {
-        params: { search: searchTerm, limit: 10 },
-        timeout: 5000,
-      }
-    );
+    const url = new URL(`${baseUrl}/announcements`);
+    url.searchParams.append('search', searchTerm);
+    url.searchParams.append('limit', '10');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(url.toString(), {
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
 
     const duration = Date.now() - startTime;
+    const data: AnnouncementsResponse = await response.json();
 
     // Vérifications
     const isSuccess = response.status === 200 && duration < 200;
@@ -171,9 +185,10 @@ async function searchCatalog(context: ArtilleryContext, events: ArtilleryEvents)
     events.emit('counter', 'search.errors', 1);
     events.emit('histogram', 'search.response_time', duration);
     
-    if (axios.isAxiosError(error)) {
-      const statusCode = error.response?.status || 'unknown';
-      events.emit('counter', `search.errors.${statusCode}`, 1);
+    if (error instanceof Error && error.name === 'AbortError') {
+      events.emit('counter', 'search.errors.timeout', 1);
+    } else {
+      events.emit('counter', 'search.errors.unknown', 1);
     }
   }
 }
