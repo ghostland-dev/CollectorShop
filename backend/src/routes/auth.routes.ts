@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { hashPassword, comparePassword, generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/auth';
 import { logger } from '../utils/logger';
 import { authenticate } from '../utils/auth';
-import '../types/express';
 
 const router = Router();
 const prisma = new PrismaClient();

@@ -3,7 +3,6 @@ import multer from 'multer';
 import { authenticate, authorize } from '../utils/auth';
 import { minioService } from '../services/minio.service';
 import { logger } from '../utils/logger';
-import '../types/express';
 
 const router = Router();
 
