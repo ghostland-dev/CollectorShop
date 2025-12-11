@@ -164,12 +164,12 @@ export function CatalogPage() {
   };
 
   return (
-    <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+    <Box role="region" aria-label="Catalogue des annonces">
+      <Box sx={{ mb: 4 }} role="banner">
+        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" id="catalog-title">
           Catalogue
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" aria-describedby="catalog-title">
           Découvrez notre sélection d'objets de collection
         </Typography>
       </Box>

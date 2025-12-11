@@ -149,6 +149,7 @@ function CartSummary({ items, isAuthenticated, processingCount, onBuyAll, onLogi
         startIcon={<Payment />}
         onClick={onBuyAll}
         disabled={!isAuthenticated || processingCount > 0}
+        aria-label={`Acheter ${items.length} article${items.length > 1 ? 's' : ''}`}
       >
         Acheter tout ({items.length})
       </Button>
@@ -197,8 +198,8 @@ export function CartPage() {
   });
 
   const handleBuyItem = (announcementId: string) => {
-    if (!isAuthenticated || user?.role !== 'BUYER') {
-      showError('Vous devez être connecté en tant qu\'acheteur pour effectuer un achat');
+    if (!isAuthenticated || (user?.role !== 'BUYER' && user?.role !== 'SELLER' && user?.role !== 'ADMIN')) {
+      showError('Vous devez être connecté pour effectuer un achat');
       navigate('/login');
       return;
     }
@@ -207,15 +208,21 @@ export function CartPage() {
   };
 
   const handleBuyAll = () => {
-    if (!isAuthenticated || user?.role !== 'BUYER') {
-      showError('Vous devez être connecté en tant qu\'acheteur pour effectuer un achat');
+    if (!isAuthenticated || (user?.role !== 'BUYER' && user?.role !== 'SELLER' && user?.role !== 'ADMIN')) {
+      showError('Vous devez être connecté pour effectuer un achat');
       navigate('/login');
       return;
     }
-    items.forEach((item) => {
-      if (!processingItems.has(item.announcementId)) {
-        handleBuyItem(item.announcementId);
-      }
+    // Rediriger vers la page de checkout
+    navigate('/checkout', {
+      state: {
+        items: items.map((item) => ({
+          announcementId: item.announcementId,
+          title: item.title,
+          price: item.price,
+        })),
+        total: items.reduce((sum, item) => sum + item.price, 0),
+      },
     });
   };
 

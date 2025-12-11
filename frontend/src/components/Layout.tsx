@@ -1,10 +1,11 @@
 import React, { ReactNode } from 'react';
 import { AppBar, Toolbar, Typography, Button, Box, Container, Avatar, Menu, MenuItem, IconButton, Badge } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
-import { Logout, Add, ShoppingCart } from '@mui/icons-material';
+import { Logout, Add, ShoppingCart, ShoppingBag } from '@mui/icons-material';
 import { useAuthStore } from '../stores/authStore';
 import { useCartStore } from '../stores/cartStore';
 import { useNotifications } from '../hooks/useNotifications';
+import { LanguageSelector } from './LanguageSelector';
 
 interface LayoutProps {
   children: ReactNode;
@@ -33,6 +34,10 @@ function UserMenu({ anchorEl, user, onClose, onLogout }: {
           {user?.email}
         </Typography>
       </MenuItem>
+      <MenuItem component={Link} to="/my-purchases" onClick={onClose}>
+        <ShoppingBag sx={{ mr: 1 }} />
+        Mes achats
+      </MenuItem>
       <MenuItem onClick={onLogout}>
         <Logout sx={{ mr: 1 }} />
         Déconnexion
@@ -50,18 +55,29 @@ function AuthenticatedMenu({ user, cartItemCount, onMenuClick, anchorEl, onClose
   onCloseMenu: () => void;
   onLogout: () => void;
 }) {
-  const isBuyer = user?.role === 'BUYER' || user?.role === 'ADMIN';
+  const isBuyer = user?.role === 'BUYER' || user?.role === 'SELLER' || user?.role === 'ADMIN';
   const isSeller = user?.role === 'SELLER' || user?.role === 'ADMIN';
 
   return (
     <>
+      <LanguageSelector />
       <Button
         color="inherit"
         component={Link}
         to="/catalog"
         sx={{ display: { xs: 'none', sm: 'flex' } }}
+        aria-label="Accéder au catalogue"
       >
         Catalogue
+      </Button>
+      <Button
+        color="inherit"
+        component={Link}
+        to="/chat"
+        sx={{ display: { xs: 'none', sm: 'flex' } }}
+        aria-label="Accéder aux messages"
+      >
+        Messages
       </Button>
       {isBuyer && (
         <IconButton
@@ -69,9 +85,11 @@ function AuthenticatedMenu({ user, cartItemCount, onMenuClick, anchorEl, onClose
           component={Link}
           to="/cart"
           sx={{ ml: 1 }}
+          aria-label={`Panier avec ${cartItemCount} article${cartItemCount > 1 ? 's' : ''}`}
+          aria-describedby="cart-badge"
         >
-          <Badge badgeContent={cartItemCount} color="error">
-            <ShoppingCart />
+          <Badge badgeContent={cartItemCount} color="error" id="cart-badge">
+            <ShoppingCart aria-hidden="true" />
           </Badge>
         </IconButton>
       )}
@@ -82,6 +100,7 @@ function AuthenticatedMenu({ user, cartItemCount, onMenuClick, anchorEl, onClose
             component={Link}
             to="/my-announcements"
             sx={{ display: { xs: 'none', sm: 'flex' } }}
+            aria-label="Accéder à mes annonces"
           >
             Mes annonces
           </Button>
@@ -90,6 +109,7 @@ function AuthenticatedMenu({ user, cartItemCount, onMenuClick, anchorEl, onClose
             component={Link}
             to="/announcements/create"
             startIcon={<Add />}
+            aria-label="Créer une nouvelle annonce"
           >
             Créer
           </Button>
@@ -100,8 +120,12 @@ function AuthenticatedMenu({ user, cartItemCount, onMenuClick, anchorEl, onClose
         onClick={onMenuClick}
         color="inherit"
         sx={{ ml: 1 }}
+        aria-label="Menu utilisateur"
+        aria-haspopup="true"
+        aria-expanded={!!anchorEl}
+        id="user-menu-button"
       >
-        <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+        <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }} aria-hidden="true">
           {user?.firstName?.[0] || user?.email?.[0].toUpperCase()}
         </Avatar>
       </IconButton>
@@ -156,9 +180,18 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component={Link} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit', fontWeight: 'bold' }}>
+      <a href="#main-content" className="skip-to-main">
+        Aller au contenu principal
+      </a>
+      <AppBar position="static" role="banner" aria-label="En-tête principal">
+        <Toolbar role="toolbar" aria-label="Navigation principale">
+          <Typography
+            variant="h6"
+            component={Link}
+            to="/"
+            sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit', fontWeight: 'bold' }}
+            aria-label="Collector.shop - Accueil"
+          >
             Collector.shop
           </Typography>
           {isAuthenticated ? (
@@ -175,10 +208,10 @@ export function Layout({ children }: LayoutProps) {
           )}
         </Toolbar>
       </AppBar>
-      <Container component="main" sx={{ flex: 1, py: 4 }}>
+      <Container id="main-content" component="main" sx={{ flex: 1, py: 4 }} role="main" tabIndex={-1}>
         {children}
       </Container>
-      <Box component="footer" sx={{ py: 2, textAlign: 'center', bgcolor: 'grey.100' }}>
+      <Box component="footer" sx={{ py: 2, textAlign: 'center', bgcolor: 'grey.100' }} role="contentinfo">
         <Typography variant="body2" color="text.secondary">
           © 2024 Collector.shop - POC
         </Typography>

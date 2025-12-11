@@ -236,8 +236,8 @@ export function AnnouncementDetailPage() {
   };
 
   const handleBuyNow = () => {
-    if (!isAuthenticated || user?.role !== 'BUYER') {
-      showError('Vous devez être connecté en tant qu\'acheteur pour effectuer un achat');
+    if (!isAuthenticated || (user?.role !== 'BUYER' && user?.role !== 'SELLER' && user?.role !== 'ADMIN')) {
+      showError('Vous devez être connecté pour effectuer un achat');
       navigate('/login');
       return;
     }
@@ -250,7 +250,7 @@ export function AnnouncementDetailPage() {
     }
   };
 
-  const canPurchase = isAuthenticated && user?.role === 'BUYER' && announcement?.status === 'PUBLISHED';
+  const canPurchase = isAuthenticated && (user?.role === 'BUYER' || user?.role === 'SELLER' || user?.role === 'ADMIN') && announcement?.status === 'PUBLISHED';
 
   if (isLoading) {
     return (
