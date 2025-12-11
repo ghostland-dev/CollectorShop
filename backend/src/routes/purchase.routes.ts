@@ -384,6 +384,25 @@ async function updatePurchaseDeliveryStatus(
   });
 }
 
+// Helper function to validate and fetch purchase for delivery status update
+async function validatePurchaseForDeliveryUpdate(purchaseId: string, userId: string, userRole: string) {
+  const purchase = await prisma.purchase.findUnique({
+    where: { id: purchaseId },
+    include: { announcement: true },
+  });
+
+  if (!purchase) {
+    return { error: 'Achat introuvable', status: 404 };
+  }
+
+  const authError = checkSellerAuthorization(purchase, userId, userRole);
+  if (authError) {
+    return { error: authError, status: 403 };
+  }
+
+  return { purchase, error: null, status: null };
+}
+
 // Mettre à jour le statut de livraison (SELLER ou ADMIN uniquement)
 router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -402,19 +421,9 @@ router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'),
       return;
     }
 
-    const purchase = await prisma.purchase.findUnique({
-      where: { id },
-      include: { announcement: true },
-    });
-
-    if (!purchase) {
-      res.status(404).json({ error: 'Achat introuvable' });
-      return;
-    }
-
-    const authError = checkSellerAuthorization(purchase, user.userId, user.role);
-    if (authError) {
-      res.status(403).json({ error: authError });
+    const validation = await validatePurchaseForDeliveryUpdate(id, user.userId, user.role);
+    if (validation.error) {
+      res.status(validation.status!).json({ error: validation.error });
       return;
     }
 
@@ -422,7 +431,7 @@ router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'),
       id,
       validatedStatus,
       trackingNumber,
-      purchase.shippedAt
+      validation.purchase!.shippedAt
     );
 
     logger.info('Statut de livraison mis à jour', {

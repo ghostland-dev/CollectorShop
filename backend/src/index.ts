@@ -1,4 +1,4 @@
-import express, { Express, Request, Response, NextFunction } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -16,7 +16,7 @@ import { metricsService } from './services/metrics.service';
 
 dotenv.config();
 
-const app: Express = express();
+const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
