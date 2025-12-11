@@ -6,6 +6,8 @@ node_modules/
 # Testing
 coverage/
 .nyc_output/
+tests/**/report.json
+tests/**/*.html
 
 # Production
 build/

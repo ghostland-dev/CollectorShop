@@ -257,30 +257,48 @@ curl "http://localhost:8428/api/v1/query?query=up"
 
 ```
 POC/
-├── backend/
+├── backend/                 # Backend Node.js/Express
 │   ├── src/
 │   │   ├── routes/          # Routes API
 │   │   ├── utils/           # Utilitaires (auth, logger)
-│   │   ├── __tests__/       # Tests
+│   │   ├── services/        # Services métier
+│   │   ├── middleware/      # Middlewares Express
+│   │   ├── __tests__/       # Tests unitaires et d'intégration
 │   │   └── index.ts         # Point d'entrée
 │   ├── prisma/
-│   │   └── schema.prisma    # Schéma de base de données
+│   │   ├── schema.prisma    # Schéma de base de données
+│   │   ├── migrations/      # Migrations Prisma
+│   │   └── seed.ts          # Seed de la base de données
+│   ├── scripts/             # Scripts utilitaires
 │   ├── Dockerfile
 │   └── package.json
-├── frontend/
+├── frontend/                # Frontend React/TypeScript
 │   ├── src/
 │   │   ├── components/      # Composants React
 │   │   ├── pages/           # Pages de l'application
-│   │   ├── services/        # Services API
+│   │   ├── services/         # Services API
 │   │   ├── stores/          # Stores Zustand
-│   │   └── __tests__/       # Tests
+│   │   ├── hooks/           # Hooks React personnalisés
+│   │   └── __tests__/       # Tests unitaires
 │   ├── Dockerfile
 │   └── package.json
+├── tests/                   # Tests du projet
+│   ├── load-tests/          # Tests de charge et performance
+│   │   ├── artillery.yml    # Configuration Artillery
+│   │   └── load-test.ts     # Fonctions TypeScript personnalisées
+│   └── README.md            # Documentation des tests
+├── docs/                    # Documentation
+│   ├── INSTALLATION.md      # Guide d'installation
+│   └── MONITORING.md        # Guide de monitoring
+├── grafana/                 # Configuration Grafana
+│   ├── dashboards/          # Dashboards JSON
+│   └── provisioning/        # Configuration automatique
 ├── .github/
 │   └── workflows/
 │       └── ci-cd.yml        # Pipeline CI/CD
-├── docker-compose.yml
-└── README.md
+├── docker-compose.yml       # Configuration Docker Compose
+├── package.json             # Configuration workspace racine
+└── README.md                # Documentation principale
 ```
 
 ## Dépannage

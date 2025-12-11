@@ -11,10 +11,17 @@
     "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
     "test": "npm run test --workspaces",
     "build": "npm run build --workspaces",
-    "lint": "npm run lint --workspaces"
+    "lint": "npm run lint --workspaces",
+    "load-test": "NODE_OPTIONS='--require tsx/register' artillery run tests/load-tests/artillery.yml",
+    "load-test:report": "NODE_OPTIONS='--require tsx/register' artillery run --output tests/load-tests/report.json tests/load-tests/artillery.yml && artillery report tests/load-tests/report.json"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "artillery": "^2.0.0",
+    "@types/node": "^20.10.5",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "axios": "^1.6.2"
   },
   "engines": {
     "node": ">=20.0.0",
