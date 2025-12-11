@@ -1,20 +1,18 @@
-import { useSnackbar } from 'notistack';
+import { toast } from 'react-toastify';
 
 export function useNotifications() {
-  const { enqueueSnackbar } = useSnackbar();
-
   return {
     showSuccess: (message: string) => {
-      enqueueSnackbar(message, { variant: 'success' });
+      toast.success(message);
     },
     showError: (message: string) => {
-      enqueueSnackbar(message, { variant: 'error' });
+      toast.error(message);
     },
     showWarning: (message: string) => {
-      enqueueSnackbar(message, { variant: 'warning' });
+      toast.warning(message);
     },
     showInfo: (message: string) => {
-      enqueueSnackbar(message, { variant: 'info' });
+      toast.info(message);
     },
   };
 }

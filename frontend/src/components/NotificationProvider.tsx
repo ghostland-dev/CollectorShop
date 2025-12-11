@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
-import { SnackbarProvider } from 'notistack';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface NotificationProviderProps {
   children: ReactNode;
@@ -7,15 +8,21 @@ interface NotificationProviderProps {
 
 export function NotificationProvider({ children }: NotificationProviderProps) {
   return (
-    <SnackbarProvider
-      maxSnack={3}
-      anchorOrigin={{
-        vertical: 'top',
-        horizontal: 'right',
-      }}
-      autoHideDuration={4000}
-    >
+    <>
       {children}
-    </SnackbarProvider>
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        limit={3}
+      />
+    </>
   );
 }
