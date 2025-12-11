@@ -1,0 +1,86 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "close": "Fermer"
+  },
+  "nav": {
+    "home": "Accueil",
+    "catalog": "Catalogue",
+    "myAnnouncements": "Mes annonces",
+    "create": "Créer",
+    "login": "Connexion",
+    "register": "Inscription",
+    "logout": "Déconnexion",
+    "cart": "Panier"
+  },
+  "auth": {
+    "login": "Se connecter",
+    "register": "S'inscrire",
+    "email": "Email",
+    "password": "Mot de passe",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "loginSuccess": "Connexion réussie",
+    "registerSuccess": "Inscription réussie",
+    "logoutSuccess": "Déconnexion réussie"
+  },
+  "catalog": {
+    "title": "Catalogue",
+    "subtitle": "Découvrez notre sélection d'objets de collection",
+    "noResults": "Aucune annonce trouvée",
+    "tryModify": "Essayez de modifier vos critères de recherche",
+    "results": "résultat",
+    "results_plural": "résultats"
+  },
+  "announcement": {
+    "title": "Titre",
+    "description": "Description",
+    "price": "Prix",
+    "category": "Catégorie",
+    "images": "Images",
+    "create": "Créer une annonce",
+    "edit": "Modifier l'annonce",
+    "delete": "Supprimer l'annonce",
+    "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette annonce ?",
+    "createSuccess": "Annonce créée avec succès",
+    "editSuccess": "Annonce modifiée avec succès",
+    "deleteSuccess": "Annonce supprimée avec succès",
+    "addToCart": "Ajouter au panier",
+    "buyNow": "Acheter maintenant",
+    "sold": "Vendu",
+    "draft": "Brouillon",
+    "published": "Publié"
+  },
+  "cart": {
+    "title": "Panier",
+    "empty": "Votre panier est vide",
+    "emptySubtitle": "Ajoutez des articles depuis le catalogue pour les voir apparaître ici",
+    "browseCatalog": "Parcourir le catalogue",
+    "summary": "Récapitulatif",
+    "subtotal": "Sous-total",
+    "total": "Total",
+    "buyAll": "Acheter tout",
+    "loginRequired": "Vous devez être connecté pour effectuer un achat"
+  },
+  "chat": {
+    "title": "Messages",
+    "conversations": "Conversations",
+    "newMessage": "Nouveau message",
+    "send": "Envoyer",
+    "typeMessage": "Tapez votre message...",
+    "noConversations": "Aucune conversation",
+    "noMessages": "Aucun message",
+    "unread": "Non lu",
+    "read": "Lu"
+  }
+}
+

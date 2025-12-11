@@ -1,0 +1,86 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "close": "Close"
+  },
+  "nav": {
+    "home": "Home",
+    "catalog": "Catalog",
+    "myAnnouncements": "My announcements",
+    "create": "Create",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "cart": "Cart"
+  },
+  "auth": {
+    "login": "Sign in",
+    "register": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "loginSuccess": "Login successful",
+    "registerSuccess": "Registration successful",
+    "logoutSuccess": "Logout successful"
+  },
+  "catalog": {
+    "title": "Catalog",
+    "subtitle": "Discover our selection of collectible items",
+    "noResults": "No announcements found",
+    "tryModify": "Try modifying your search criteria",
+    "results": "result",
+    "results_plural": "results"
+  },
+  "announcement": {
+    "title": "Title",
+    "description": "Description",
+    "price": "Price",
+    "category": "Category",
+    "images": "Images",
+    "create": "Create announcement",
+    "edit": "Edit announcement",
+    "delete": "Delete announcement",
+    "deleteConfirm": "Are you sure you want to delete this announcement?",
+    "createSuccess": "Announcement created successfully",
+    "editSuccess": "Announcement edited successfully",
+    "deleteSuccess": "Announcement deleted successfully",
+    "addToCart": "Add to cart",
+    "buyNow": "Buy now",
+    "sold": "Sold",
+    "draft": "Draft",
+    "published": "Published"
+  },
+  "cart": {
+    "title": "Cart",
+    "empty": "Your cart is empty",
+    "emptySubtitle": "Add items from the catalog to see them appear here",
+    "browseCatalog": "Browse catalog",
+    "summary": "Summary",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "buyAll": "Buy all",
+    "loginRequired": "You must be logged in to make a purchase"
+  },
+  "chat": {
+    "title": "Messages",
+    "conversations": "Conversations",
+    "newMessage": "New message",
+    "send": "Send",
+    "typeMessage": "Type your message...",
+    "noConversations": "No conversations",
+    "noMessages": "No messages",
+    "unread": "Unread",
+    "read": "Read"
+  }
+}
+
