@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, DeliveryStatus } from '@prisma/client';
 import { z } from 'zod';
 import { authenticate, authorize } from '../utils/auth';
 import { logger } from '../utils/logger';
@@ -282,12 +282,19 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
 });
 
 // Helper function to validate delivery status
-function validateDeliveryStatus(deliveryStatus: unknown): string | null {
-  const validStatuses = ['PENDING', 'PREPARING', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'];
-  if (!deliveryStatus || typeof deliveryStatus !== 'string' || !validStatuses.includes(deliveryStatus)) {
-    return 'Statut de livraison invalide';
+function validateDeliveryStatus(deliveryStatus: unknown): DeliveryStatus | null {
+  const validStatuses: DeliveryStatus[] = [
+    DeliveryStatus.PENDING,
+    DeliveryStatus.PREPARING,
+    DeliveryStatus.SHIPPED,
+    DeliveryStatus.IN_TRANSIT,
+    DeliveryStatus.DELIVERED,
+    DeliveryStatus.CANCELLED,
+  ];
+  if (!deliveryStatus || typeof deliveryStatus !== 'string' || !validStatuses.includes(deliveryStatus as DeliveryStatus)) {
+    return null;
   }
-  return null;
+  return deliveryStatus as DeliveryStatus;
 }
 
 // Helper function to check seller authorization
@@ -300,17 +307,17 @@ function checkSellerAuthorization(purchase: { announcement: { sellerId: string }
 
 // Helper function to build delivery status update data
 function buildDeliveryStatusUpdateData(
-  deliveryStatus: string,
+  deliveryStatus: DeliveryStatus,
   trackingNumber?: string,
   existingShippedAt?: Date | null
 ): {
-  deliveryStatus: string;
+  deliveryStatus: DeliveryStatus;
   trackingNumber?: string;
   shippedAt?: Date;
   deliveredAt?: Date;
 } {
   const updateData: {
-    deliveryStatus: string;
+    deliveryStatus: DeliveryStatus;
     trackingNumber?: string;
     shippedAt?: Date;
     deliveredAt?: Date;
@@ -362,6 +369,21 @@ function buildPurchaseIncludeForDeliveryStatus() {
   };
 }
 
+// Helper function to handle delivery status update
+async function updatePurchaseDeliveryStatus(
+  purchaseId: string,
+  deliveryStatus: DeliveryStatus,
+  trackingNumber?: string,
+  shippedAt?: Date | null
+) {
+  const updateData = buildDeliveryStatusUpdateData(deliveryStatus, trackingNumber, shippedAt);
+  return prisma.purchase.update({
+    where: { id: purchaseId },
+    data: updateData,
+    include: buildPurchaseIncludeForDeliveryStatus(),
+  });
+}
+
 // Mettre à jour le statut de livraison (SELLER ou ADMIN uniquement)
 router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -374,9 +396,9 @@ router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'),
     const { id } = req.params;
     const { deliveryStatus, trackingNumber } = req.body;
 
-    const statusError = validateDeliveryStatus(deliveryStatus);
-    if (statusError) {
-      res.status(400).json({ error: statusError });
+    const validatedStatus = validateDeliveryStatus(deliveryStatus);
+    if (!validatedStatus) {
+      res.status(400).json({ error: 'Statut de livraison invalide' });
       return;
     }
 
@@ -396,17 +418,16 @@ router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'),
       return;
     }
 
-    const updateData = buildDeliveryStatusUpdateData(deliveryStatus, trackingNumber, purchase.shippedAt);
-
-    const updatedPurchase = await prisma.purchase.update({
-      where: { id },
-      data: updateData,
-      include: buildPurchaseIncludeForDeliveryStatus(),
-    });
+    const updatedPurchase = await updatePurchaseDeliveryStatus(
+      id,
+      validatedStatus,
+      trackingNumber,
+      purchase.shippedAt
+    );
 
     logger.info('Statut de livraison mis à jour', {
       purchaseId: id,
-      deliveryStatus,
+      deliveryStatus: validatedStatus,
       updatedBy: user.userId,
     });
 
