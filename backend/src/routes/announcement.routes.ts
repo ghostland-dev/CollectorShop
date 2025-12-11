@@ -176,6 +176,55 @@ async function createAnnouncementWithSeller(
   });
 }
 
+// Helper function to validate images
+function validateImageUrls(images: string[] | undefined, res: Response): boolean {
+  const imageValidation = validateImages(images || []);
+  if (!imageValidation.valid) {
+    res.status(400).json({
+      error: 'URLs d\'images invalides',
+      invalidUrls: imageValidation.invalidUrls,
+    });
+    return false;
+  }
+  return true;
+}
+
+// Helper function to run moderation check
+async function runModerationCheck(
+  userId: string,
+  data: { title: string; description: string; price: number; category?: string | null },
+  res: Response
+): Promise<{ approved: boolean; score: number; reasons: string[] } | null> {
+  const existingTitles = await prisma.announcement.findMany({
+    where: { sellerId: userId },
+    select: { title: true },
+  });
+
+  const moderationResult = await moderateAnnouncement({
+    title: data.title,
+    description: data.description,
+    price: data.price,
+    category: data.category,
+    existingTitles: existingTitles.map((a) => a.title),
+  });
+
+  if (!moderationResult.approved) {
+    logger.warn('Annonce rejetée par la modération automatique', {
+      sellerId: userId,
+      reasons: moderationResult.reasons,
+      score: moderationResult.score,
+    });
+    res.status(400).json({
+      error: 'Annonce rejetée par la modération automatique',
+      reasons: moderationResult.reasons,
+      score: moderationResult.score,
+    });
+    return null;
+  }
+
+  return moderationResult;
+}
+
 // Créer une annonce (SELLER uniquement)
 router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -186,41 +235,12 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
     }
     const data = createAnnouncementSchema.parse(req.body);
 
-    // Validation des images
-    const imageValidation = validateImages(data.images || []);
-    if (!imageValidation.valid) {
-      res.status(400).json({
-        error: 'URLs d\'images invalides',
-        invalidUrls: imageValidation.invalidUrls,
-      });
+    if (!validateImageUrls(data.images, res)) {
       return;
     }
 
-    // Modération automatique
-    const existingTitles = await prisma.announcement.findMany({
-      where: { sellerId: user.userId },
-      select: { title: true },
-    });
-
-    const moderationResult = await moderateAnnouncement({
-      title: data.title,
-      description: data.description,
-      price: data.price,
-      category: data.category,
-      existingTitles: existingTitles.map((a) => a.title),
-    });
-
-    if (!moderationResult.approved) {
-      logger.warn('Annonce rejetée par la modération automatique', {
-        sellerId: user.userId,
-        reasons: moderationResult.reasons,
-        score: moderationResult.score,
-      });
-      res.status(400).json({
-        error: 'Annonce rejetée par la modération automatique',
-        reasons: moderationResult.reasons,
-        score: moderationResult.score,
-      });
+    const moderationResult = await runModerationCheck(user.userId, data, res);
+    if (!moderationResult) {
       return;
     }
 

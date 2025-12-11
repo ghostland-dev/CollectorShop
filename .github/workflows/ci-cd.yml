@@ -623,6 +623,7 @@ jobs:
         if: always()
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          ack_no_webhook: true
           title: "${{ steps.status.outputs.emoji }} CI/CD Pipeline - Collector.shop"
           description: |
             **État global**: ${{ steps.status.outputs.emoji }} ${{ steps.status.outputs.status == 'success' && 'Succès' || steps.status.outputs.status == 'failure' && 'Échec' || 'Annulé' }}

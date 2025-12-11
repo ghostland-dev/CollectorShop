@@ -13,6 +13,57 @@ const createMessageSchema = z.object({
   content: z.string().min(1, 'Le message ne peut pas être vide').max(2000, 'Le message est trop long (max 2000 caractères)'),
 });
 
+// Helper function to build conversation include
+function buildConversationInclude() {
+  return {
+    user1: {
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    },
+    user2: {
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    },
+    announcement: {
+      select: {
+        id: true,
+        title: true,
+        price: true,
+        images: true,
+      },
+    },
+  };
+}
+
+// Helper function to find existing conversation
+async function findExistingConversation(userId: string, receiverId: string, announcementId?: string | null) {
+  return prisma.conversation.findFirst({
+    where: {
+      OR: [
+        {
+          user1Id: userId,
+          user2Id: receiverId,
+          announcementId: announcementId || null,
+        },
+        {
+          user1Id: receiverId,
+          user2Id: userId,
+          announcementId: announcementId || null,
+        },
+      ],
+    },
+    include: buildConversationInclude(),
+  });
+}
+
 // Créer ou récupérer une conversation
 router.get('/conversations', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -30,30 +81,7 @@ router.get('/conversations', authenticate, async (req: Request, res: Response): 
         ],
       },
       include: {
-        user1: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        user2: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        announcement: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            images: true,
-          },
-        },
+        ...buildConversationInclude(),
         messages: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -81,6 +109,35 @@ router.get('/conversations', authenticate, async (req: Request, res: Response): 
   }
 });
 
+// Helper function to validate receiver
+async function validateReceiver(receiverId: string): Promise<{ valid: boolean; error?: string }> {
+  if (!receiverId) {
+    return { valid: false, error: 'ID de destinataire invalide' };
+  }
+
+  const receiver = await prisma.user.findUnique({
+    where: { id: receiverId },
+  });
+
+  if (!receiver) {
+    return { valid: false, error: 'Destinataire introuvable' };
+  }
+
+  return { valid: true };
+}
+
+// Helper function to create conversation
+async function createConversation(userId: string, receiverId: string, announcementId?: string | null) {
+  return prisma.conversation.create({
+    data: {
+      user1Id: userId,
+      user2Id: receiverId,
+      announcementId: announcementId || null,
+    },
+    include: buildConversationInclude(),
+  });
+}
+
 // Récupérer ou créer une conversation avec un utilisateur
 router.post('/conversations', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -97,106 +154,64 @@ router.post('/conversations', authenticate, async (req: Request, res: Response):
       return;
     }
 
-    // Vérifier que le destinataire existe
-    const receiver = await prisma.user.findUnique({
-      where: { id: receiverId },
-    });
-
-    if (!receiver) {
-      res.status(404).json({ error: 'Destinataire introuvable' });
+    const receiverValidation = await validateReceiver(receiverId);
+    if (!receiverValidation.valid) {
+      res.status(404).json({ error: receiverValidation.error });
       return;
     }
 
-    // Chercher une conversation existante
-    const existingConversation = await prisma.conversation.findFirst({
-      where: {
-        OR: [
-          {
-            user1Id: user.userId,
-            user2Id: receiverId,
-            announcementId: announcementId || null,
-          },
-          {
-            user1Id: receiverId,
-            user2Id: user.userId,
-            announcementId: announcementId || null,
-          },
-        ],
-      },
-      include: {
-        user1: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        user2: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        announcement: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            images: true,
-          },
-        },
-      },
-    });
-
+    const existingConversation = await findExistingConversation(user.userId, receiverId, announcementId);
     if (existingConversation) {
       res.json({ conversation: existingConversation });
       return;
     }
 
-    // Créer une nouvelle conversation
-    const conversation = await prisma.conversation.create({
-      data: {
-        user1Id: user.userId,
-        user2Id: receiverId,
-        announcementId: announcementId || null,
-      },
-      include: {
-        user1: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        user2: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        announcement: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            images: true,
-          },
-        },
-      },
-    });
-
+    const conversation = await createConversation(user.userId, receiverId, announcementId);
     res.status(201).json({ conversation });
   } catch (error) {
     logger.error('Erreur lors de la création de la conversation', { error });
     res.status(500).json({ error: 'Erreur lors de la création de la conversation' });
   }
 });
+
+// Helper function to check conversation access
+async function checkConversationAccess(conversationId: string, userId: string): Promise<{ allowed: boolean; error?: string }> {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+  });
+
+  if (!conversation) {
+    return { allowed: false, error: 'Conversation introuvable' };
+  }
+
+  if (conversation.user1Id !== userId && conversation.user2Id !== userId) {
+    return { allowed: false, error: 'Vous n\'êtes pas autorisé à accéder à cette conversation' };
+  }
+
+  return { allowed: true };
+}
+
+// Helper function to build message include
+function buildMessageInclude() {
+  return {
+    sender: {
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    },
+    receiver: {
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    },
+  };
+}
 
 // Récupérer les messages d'une conversation
 router.get('/conversations/:conversationId/messages', authenticate, async (req: Request, res: Response): Promise<void> => {
@@ -210,46 +225,20 @@ router.get('/conversations/:conversationId/messages', authenticate, async (req: 
     const { conversationId } = req.params;
     const { page = '1', limit = '50' } = req.query;
 
+    const accessCheck = await checkConversationAccess(conversationId, user.userId);
+    if (!accessCheck.allowed) {
+      res.status(accessCheck.error?.includes('introuvable') ? 404 : 403).json({ error: accessCheck.error });
+      return;
+    }
+
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
 
-    // Vérifier que l'utilisateur fait partie de la conversation
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-    });
-
-    if (!conversation) {
-      res.status(404).json({ error: 'Conversation introuvable' });
-      return;
-    }
-
-    if (conversation.user1Id !== user.userId && conversation.user2Id !== user.userId) {
-      res.status(403).json({ error: 'Vous n\'êtes pas autorisé à accéder à cette conversation' });
-      return;
-    }
-
     const [messages, total] = await Promise.all([
       prisma.message.findMany({
         where: { conversationId },
-        include: {
-          sender: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-          receiver: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-        },
+        include: buildMessageInclude(),
         orderBy: { createdAt: 'desc' },
         take: limitNum,
         skip,
@@ -257,7 +246,6 @@ router.get('/conversations/:conversationId/messages', authenticate, async (req: 
       prisma.message.count({ where: { conversationId } }),
     ]);
 
-    // Marquer les messages comme lus si l'utilisateur est le destinataire
     await prisma.message.updateMany({
       where: {
         conversationId,
@@ -268,7 +256,7 @@ router.get('/conversations/:conversationId/messages', authenticate, async (req: 
     });
 
     res.json({
-      messages: messages.reverse(), // Inverser pour avoir les plus anciens en premier
+      messages: messages.reverse(),
       total,
       page: pageNum,
       limit: limitNum,
@@ -278,6 +266,42 @@ router.get('/conversations/:conversationId/messages', authenticate, async (req: 
     res.status(500).json({ error: 'Erreur lors de la récupération des messages' });
   }
 });
+
+// Helper function to get or create conversation for message
+async function getOrCreateConversationForMessage(
+  userId: string,
+  receiverId: string,
+  announcementId?: string | null
+) {
+  let conversation = await prisma.conversation.findFirst({
+    where: {
+      OR: [
+        {
+          user1Id: userId,
+          user2Id: receiverId,
+          announcementId: announcementId || null,
+        },
+        {
+          user1Id: receiverId,
+          user2Id: userId,
+          announcementId: announcementId || null,
+        },
+      ],
+    },
+  });
+
+  if (!conversation) {
+    conversation = await prisma.conversation.create({
+      data: {
+        user1Id: userId,
+        user2Id: receiverId,
+        announcementId: announcementId || null,
+      },
+    });
+  }
+
+  return conversation;
+}
 
 // Envoyer un message
 router.post('/messages', authenticate, async (req: Request, res: Response): Promise<void> => {
@@ -290,50 +314,23 @@ router.post('/messages', authenticate, async (req: Request, res: Response): Prom
 
     const data = createMessageSchema.parse(req.body);
 
-    // Vérifier que le destinataire existe
-    const receiver = await prisma.user.findUnique({
-      where: { id: data.receiverId },
-    });
-
-    if (!receiver) {
-      res.status(404).json({ error: 'Destinataire introuvable' });
-      return;
-    }
-
     if (data.receiverId === user.userId) {
       res.status(400).json({ error: 'Vous ne pouvez pas vous envoyer un message à vous-même' });
       return;
     }
 
-    // Récupérer ou créer la conversation
-    let conversation = await prisma.conversation.findFirst({
-      where: {
-        OR: [
-          {
-            user1Id: user.userId,
-            user2Id: data.receiverId,
-            announcementId: data.announcementId || null,
-          },
-          {
-            user1Id: data.receiverId,
-            user2Id: user.userId,
-            announcementId: data.announcementId || null,
-          },
-        ],
-      },
-    });
-
-    if (!conversation) {
-      conversation = await prisma.conversation.create({
-        data: {
-          user1Id: user.userId,
-          user2Id: data.receiverId,
-          announcementId: data.announcementId || null,
-        },
-      });
+    const receiverValidation = await validateReceiver(data.receiverId);
+    if (!receiverValidation.valid) {
+      res.status(404).json({ error: receiverValidation.error });
+      return;
     }
 
-    // Créer le message
+    const conversation = await getOrCreateConversationForMessage(
+      user.userId,
+      data.receiverId,
+      data.announcementId
+    );
+
     const message = await prisma.message.create({
       data: {
         conversationId: conversation.id,
@@ -341,27 +338,9 @@ router.post('/messages', authenticate, async (req: Request, res: Response): Prom
         receiverId: data.receiverId,
         content: data.content,
       },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        receiver: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
+      include: buildMessageInclude(),
     });
 
-    // Mettre à jour la date du dernier message de la conversation
     await prisma.conversation.update({
       where: { id: conversation.id },
       data: { lastMessageAt: new Date() },

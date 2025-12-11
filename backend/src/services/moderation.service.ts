@@ -41,7 +41,7 @@ function detectSuspiciousKeywords(text: string): string[] {
 /**
  * Détecte les prix suspects (trop bas ou trop élevé)
  */
-function detectSuspiciousPrice(price: number, category?: string): boolean {
+function detectSuspiciousPrice(price: number, _category?: string): boolean {
   // Prix trop bas (< 1€) ou trop élevé (> 100000€)
   if (price < 1 || price > 100000) {
     return true;

@@ -92,6 +92,39 @@ async function createPurchaseWithSeller(announcementId: string, buyerId: string,
   });
 }
 
+// Helper function to handle fraud detection result
+function handleFraudDetectionResult(
+  fraudResult: { action: string; reasons: string[]; riskScore: number },
+  buyerId: string,
+  announcementId: string,
+  res: Response
+): boolean {
+  if (fraudResult.action === 'BLOCK') {
+    logger.warn('Achat bloqué par la détection de fraude', {
+      buyerId,
+      announcementId,
+      reasons: fraudResult.reasons,
+      riskScore: fraudResult.riskScore,
+    });
+    res.status(403).json({
+      error: 'Achat bloqué par la détection de fraude',
+      reasons: fraudResult.reasons,
+      riskScore: fraudResult.riskScore,
+    });
+    return false;
+  }
+
+  if (fraudResult.action === 'REVIEW') {
+    logger.warn('Achat nécessite une révision', {
+      buyerId,
+      announcementId,
+      reasons: fraudResult.reasons,
+      riskScore: fraudResult.riskScore,
+    });
+  }
+  return true;
+}
+
 // Helper function to handle purchase creation errors
 function handlePurchaseCreationError(error: unknown, res: Response): void {
   if (error instanceof z.ZodError) {
@@ -124,36 +157,14 @@ router.post('/', authenticate, authorize('BUYER', 'SELLER', 'ADMIN'), async (req
       return;
     }
     const data = createPurchaseSchema.parse(req.body);
-
     const announcement = await validateAnnouncementForPurchase(data.announcementId, user.userId);
 
     // Détection de fraude
     const { detectFraudForPurchase } = await import('../services/fraud-detection.service');
     const fraudResult = await detectFraudForPurchase(user.userId, data.announcementId, announcement.price);
 
-    if (fraudResult.action === 'BLOCK') {
-      logger.warn('Achat bloqué par la détection de fraude', {
-        buyerId: user.userId,
-        announcementId: data.announcementId,
-        reasons: fraudResult.reasons,
-        riskScore: fraudResult.riskScore,
-      });
-      res.status(403).json({
-        error: 'Achat bloqué par la détection de fraude',
-        reasons: fraudResult.reasons,
-        riskScore: fraudResult.riskScore,
-      });
+    if (!handleFraudDetectionResult(fraudResult, user.userId, data.announcementId, res)) {
       return;
-    }
-
-    if (fraudResult.action === 'REVIEW') {
-      logger.warn('Achat nécessite une révision', {
-        buyerId: user.userId,
-        announcementId: data.announcementId,
-        reasons: fraudResult.reasons,
-        riskScore: fraudResult.riskScore,
-      });
-      // Pour l'instant, on autorise mais on log pour révision manuelle
     }
 
     const purchase = await createPurchaseWithSeller(data.announcementId, user.userId, announcement.price);
@@ -270,6 +281,61 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
   }
 });
 
+// Helper function to validate delivery status
+function validateDeliveryStatus(deliveryStatus: unknown): string | null {
+  const validStatuses = ['PENDING', 'PREPARING', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'];
+  if (!deliveryStatus || typeof deliveryStatus !== 'string' || !validStatuses.includes(deliveryStatus)) {
+    return 'Statut de livraison invalide';
+  }
+  return null;
+}
+
+// Helper function to check seller authorization
+function checkSellerAuthorization(purchase: { announcement: { sellerId: string } }, userId: string, userRole: string): string | null {
+  if (purchase.announcement.sellerId !== userId && userRole !== 'ADMIN') {
+    return 'Vous n\'êtes pas autorisé à modifier le statut de livraison de cet achat';
+  }
+  return null;
+}
+
+// Helper function to build delivery status update data
+function buildDeliveryStatusUpdateData(
+  deliveryStatus: string,
+  trackingNumber?: string,
+  existingShippedAt?: Date | null
+): {
+  deliveryStatus: string;
+  trackingNumber?: string;
+  shippedAt?: Date;
+  deliveredAt?: Date;
+} {
+  const updateData: {
+    deliveryStatus: string;
+    trackingNumber?: string;
+    shippedAt?: Date;
+    deliveredAt?: Date;
+  } = {
+    deliveryStatus,
+  };
+
+  if (trackingNumber) {
+    updateData.trackingNumber = trackingNumber;
+  }
+
+  if (deliveryStatus === 'SHIPPED' || deliveryStatus === 'IN_TRANSIT') {
+    updateData.shippedAt = new Date();
+  }
+
+  if (deliveryStatus === 'DELIVERED') {
+    updateData.deliveredAt = new Date();
+    if (!existingShippedAt) {
+      updateData.shippedAt = new Date();
+    }
+  }
+
+  return updateData;
+}
+
 // Mettre à jour le statut de livraison (SELLER ou ADMIN uniquement)
 router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -282,14 +348,12 @@ router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'),
     const { id } = req.params;
     const { deliveryStatus, trackingNumber } = req.body;
 
-    // Valider le statut de livraison
-    const validStatuses = ['PENDING', 'PREPARING', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'];
-    if (!deliveryStatus || !validStatuses.includes(deliveryStatus)) {
-      res.status(400).json({ error: 'Statut de livraison invalide' });
+    const statusError = validateDeliveryStatus(deliveryStatus);
+    if (statusError) {
+      res.status(400).json({ error: statusError });
       return;
     }
 
-    // Vérifier que l'achat existe et que l'utilisateur est le vendeur
     const purchase = await prisma.purchase.findUnique({
       where: { id },
       include: { announcement: true },
@@ -300,36 +364,13 @@ router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'),
       return;
     }
 
-    // Vérifier que l'utilisateur est le vendeur de l'annonce
-    if (purchase.announcement.sellerId !== user.userId && user.role !== 'ADMIN') {
-      res.status(403).json({ error: 'Vous n\'êtes pas autorisé à modifier le statut de livraison de cet achat' });
+    const authError = checkSellerAuthorization(purchase, user.userId, user.role);
+    if (authError) {
+      res.status(403).json({ error: authError });
       return;
     }
 
-    // Préparer les données de mise à jour
-    const updateData: {
-      deliveryStatus: string;
-      trackingNumber?: string;
-      shippedAt?: Date;
-      deliveredAt?: Date;
-    } = {
-      deliveryStatus,
-    };
-
-    if (trackingNumber) {
-      updateData.trackingNumber = trackingNumber;
-    }
-
-    if (deliveryStatus === 'SHIPPED' || deliveryStatus === 'IN_TRANSIT') {
-      updateData.shippedAt = new Date();
-    }
-
-    if (deliveryStatus === 'DELIVERED') {
-      updateData.deliveredAt = new Date();
-      if (!purchase.shippedAt) {
-        updateData.shippedAt = new Date();
-      }
-    }
+    const updateData = buildDeliveryStatusUpdateData(deliveryStatus, trackingNumber, purchase.shippedAt);
 
     const updatedPurchase = await prisma.purchase.update({
       where: { id },

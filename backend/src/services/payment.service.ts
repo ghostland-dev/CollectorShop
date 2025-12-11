@@ -81,7 +81,7 @@ export async function confirmPayment(paymentIntentId: string): Promise<PaymentRe
  * Gère un webhook Stripe
  * TODO: Implémenter la gestion des webhooks
  */
-export async function handleStripeWebhook(payload: unknown, signature: string): Promise<void> {
+export async function handleStripeWebhook(_payload: unknown, _signature: string): Promise<void> {
   // TODO: Vérifier la signature du webhook
   // const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
   // const event = stripe.webhooks.constructEvent(
