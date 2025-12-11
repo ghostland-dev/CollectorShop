@@ -16,10 +16,13 @@ updates:
     allow:
       - dependency-type: "production"
     # Ignorer les mises à jour majeures automatiques (sauf pour les mises à jour de sécurité)
-    ignore:
-      # Ignorer les mises à jour majeures pour les dépendances critiques (sauf sécurité)
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+    # Note: Les mises à jour de sécurité sont toujours créées, même si elles sont majeures
+    # Cependant, pour éviter les problèmes avec esbuild et autres dépendances critiques,
+    # on retire l'ignore global des mises à jour majeures
+    # Si nécessaire, ignorer des dépendances spécifiques individuellement
+    # ignore:
+    #   - dependency-name: "some-package"
+    #     update-types: ["version-update:semver-major"]
     # Labels pour les PRs
     labels:
       - "dependencies"
