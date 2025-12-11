@@ -438,3 +438,116 @@ code {
     display: none;
   }
 }
+
+/* ============================================
+   ACCESSIBILITY (A11Y) IMPROVEMENTS
+   ============================================ */
+
+/* Screen reader only - pour le contenu accessible uniquement aux lecteurs d'écran */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus visible pour la navigation au clavier - Améliore la visibilité du focus */
+*:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Amélioration du contraste pour les liens */
+a {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+a:focus {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Skip to main content link - Permet de sauter la navigation */
+.skip-to-main {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #1976d2;
+  color: white;
+  padding: 8px 16px;
+  text-decoration: none;
+  z-index: 100;
+  border-radius: 0 0 4px 0;
+  font-weight: 600;
+}
+
+.skip-to-main:focus {
+  top: 0;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Amélioration du contraste pour les boutons */
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+}
+
+/* Amélioration de la visibilité des erreurs de formulaire */
+[aria-invalid="true"] {
+  border-color: #ef4444;
+}
+
+[aria-invalid="true"]:focus {
+  outline-color: #ef4444;
+}
+
+/* Amélioration de la visibilité des éléments désactivés */
+[aria-disabled="true"],
+:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Amélioration de la navigation au clavier pour les listes */
+[role="list"] li:focus {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Amélioration de la visibilité des alertes */
+[role="alert"],
+[role="status"] {
+  padding: 12px;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+/* Amélioration du contraste pour les textes secondaires */
+.text-secondary,
+.text-muted {
+  color: #4b5563;
+}
+
+/* Amélioration de la visibilité des landmarks ARIA */
+[role="banner"],
+[role="main"],
+[role="complementary"],
+[role="contentinfo"],
+[role="navigation"] {
+  position: relative;
+}
