@@ -10,6 +10,7 @@ import announcementRoutes from './routes/announcement.routes';
 import userRoutes from './routes/user.routes';
 import uploadRoutes from './routes/upload.routes';
 import purchaseRoutes from './routes/purchase.routes';
+import chatRoutes from './routes/chat.routes';
 import { metricsMiddleware } from './middleware/metrics.middleware';
 import { metricsService } from './services/metrics.service';
 
@@ -62,6 +63,7 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/purchases', purchaseRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Middleware de gestion d'erreurs
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
