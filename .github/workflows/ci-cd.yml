@@ -190,12 +190,21 @@ jobs:
           JWT_SECRET: test-secret
           JWT_REFRESH_SECRET: test-refresh-secret
 
-  # Job 4: Tests de charge (optionnel, sur demande)
+  # Job 4: Tests de charge
+  # S'exécute sur :
+  # - Déclenchement manuel (workflow_dispatch)
+  # - PRs avec le label 'load-test'
+  # - PRs vers main (pour valider la performance avant merge)
   load-tests:
     name: Tests de Charge
     runs-on: ubuntu-latest
     needs: [build-and-lint]
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'load-test')
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && (
+        contains(github.event.pull_request.labels.*.name, 'load-test') ||
+        github.base_ref == 'main'
+      ))
     permissions:
       contents: read
     
