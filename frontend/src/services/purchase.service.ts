@@ -13,6 +13,10 @@ export interface Purchase {
   buyerId: string;
   amount: number;
   status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  deliveryStatus: 'PENDING' | 'PREPARING' | 'SHIPPED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
+  trackingNumber?: string;
+  shippedAt?: string;
+  deliveredAt?: string;
   createdAt: string;
   updatedAt: string;
   announcement?: {
@@ -27,6 +31,12 @@ export interface Purchase {
       firstName: string;
       lastName: string;
     };
+  };
+  buyer?: {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
   };
 }
 
@@ -43,6 +53,19 @@ export const purchaseService = {
 
   getMyPurchases: async (): Promise<{ purchases: Purchase[] }> => {
     const response = await api.get('/purchases/me');
+    return response.data;
+  },
+
+  getMySales: async (): Promise<{ purchases: Purchase[] }> => {
+    const response = await api.get('/purchases/sales');
+    return response.data;
+  },
+
+  updateDeliveryStatus: async (
+    purchaseId: string,
+    data: { deliveryStatus: string; trackingNumber?: string }
+  ): Promise<{ message: string; purchase: Purchase }> => {
+    const response = await api.patch(`/purchases/${purchaseId}/delivery-status`, data);
     return response.data;
   },
 };
