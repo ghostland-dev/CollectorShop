@@ -213,6 +213,28 @@ function buildMessageInclude() {
   };
 }
 
+// Helper function to parse pagination params
+function parsePaginationParams(page: unknown, limit: unknown): { pageNum: number; limitNum: number; skip: number } {
+  const pageNum = parseInt(page as string, 10) || 1;
+  const limitNum = parseInt(limit as string, 10) || 50;
+  const skip = (pageNum - 1) * limitNum;
+  return { pageNum, limitNum, skip };
+}
+
+// Helper function to fetch messages with pagination
+async function fetchMessagesWithPagination(conversationId: string, limitNum: number, skip: number) {
+  return Promise.all([
+    prisma.message.findMany({
+      where: { conversationId },
+      include: buildMessageInclude(),
+      orderBy: { createdAt: 'desc' },
+      take: limitNum,
+      skip,
+    }),
+    prisma.message.count({ where: { conversationId } }),
+  ]);
+}
+
 // Récupérer les messages d'une conversation
 router.get('/conversations/:conversationId/messages', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -231,20 +253,8 @@ router.get('/conversations/:conversationId/messages', authenticate, async (req: 
       return;
     }
 
-    const pageNum = parseInt(page as string, 10);
-    const limitNum = parseInt(limit as string, 10);
-    const skip = (pageNum - 1) * limitNum;
-
-    const [messages, total] = await Promise.all([
-      prisma.message.findMany({
-        where: { conversationId },
-        include: buildMessageInclude(),
-        orderBy: { createdAt: 'desc' },
-        take: limitNum,
-        skip,
-      }),
-      prisma.message.count({ where: { conversationId } }),
-    ]);
+    const { pageNum, limitNum, skip } = parsePaginationParams(page, limit);
+    const [messages, total] = await fetchMessagesWithPagination(conversationId, limitNum, skip);
 
     await prisma.message.updateMany({
       where: {
@@ -303,6 +313,40 @@ async function getOrCreateConversationForMessage(
   return conversation;
 }
 
+// Helper function to validate message sender
+function validateMessageSender(receiverId: string, userId: string, res: Response): boolean {
+  if (receiverId === userId) {
+    res.status(400).json({ error: 'Vous ne pouvez pas vous envoyer un message à vous-même' });
+    return false;
+  }
+  return true;
+}
+
+// Helper function to create message and update conversation
+async function createMessageAndUpdateConversation(
+  conversationId: string,
+  senderId: string,
+  receiverId: string,
+  content: string
+) {
+  const [message] = await Promise.all([
+    prisma.message.create({
+      data: {
+        conversationId,
+        senderId,
+        receiverId,
+        content,
+      },
+      include: buildMessageInclude(),
+    }),
+    prisma.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: new Date() },
+    }),
+  ]);
+  return message;
+}
+
 // Envoyer un message
 router.post('/messages', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -314,8 +358,7 @@ router.post('/messages', authenticate, async (req: Request, res: Response): Prom
 
     const data = createMessageSchema.parse(req.body);
 
-    if (data.receiverId === user.userId) {
-      res.status(400).json({ error: 'Vous ne pouvez pas vous envoyer un message à vous-même' });
+    if (!validateMessageSender(data.receiverId, user.userId, res)) {
       return;
     }
 
@@ -331,20 +374,12 @@ router.post('/messages', authenticate, async (req: Request, res: Response): Prom
       data.announcementId
     );
 
-    const message = await prisma.message.create({
-      data: {
-        conversationId: conversation.id,
-        senderId: user.userId,
-        receiverId: data.receiverId,
-        content: data.content,
-      },
-      include: buildMessageInclude(),
-    });
-
-    await prisma.conversation.update({
-      where: { id: conversation.id },
-      data: { lastMessageAt: new Date() },
-    });
+    const message = await createMessageAndUpdateConversation(
+      conversation.id,
+      user.userId,
+      data.receiverId,
+      data.content
+    );
 
     logger.info('Message créé', { messageId: message.id, conversationId: conversation.id, senderId: user.userId });
     res.status(201).json({ message });

@@ -336,6 +336,32 @@ function buildDeliveryStatusUpdateData(
   return updateData;
 }
 
+// Helper function to build purchase include for delivery status update
+function buildPurchaseIncludeForDeliveryStatus() {
+  return {
+    announcement: {
+      include: {
+        seller: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    },
+    buyer: {
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    },
+  };
+}
+
 // Mettre à jour le statut de livraison (SELLER ou ADMIN uniquement)
 router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -375,28 +401,7 @@ router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'),
     const updatedPurchase = await prisma.purchase.update({
       where: { id },
       data: updateData,
-      include: {
-        announcement: {
-          include: {
-            seller: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-        },
-        buyer: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
+      include: buildPurchaseIncludeForDeliveryStatus(),
     });
 
     logger.info('Statut de livraison mis à jour', {

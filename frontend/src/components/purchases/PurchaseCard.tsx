@@ -1,19 +1,17 @@
-import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardContent,
   CardMedia,
-  CardActions,
-  Button,
   Chip,
   Grid,
-  Typography,
   Box,
 } from '@mui/material';
-import { Edit } from '@mui/icons-material';
 import { Purchase } from '../../services/purchase.service';
 import { DeliveryStatusChip } from './DeliveryStatusChip';
 import { PurchaseStatusChip } from './PurchaseStatusChip';
+import { PurchaseCardHeader } from './PurchaseCardHeader';
+import { PurchaseCardDates } from './PurchaseCardDates';
+import { PurchaseCardActions } from './PurchaseCardActions';
 
 interface PurchaseCardProps {
   purchase: Purchase;
@@ -22,39 +20,27 @@ interface PurchaseCardProps {
 }
 
 export function PurchaseCard({ purchase, isSeller, onUpdateStatus }: PurchaseCardProps) {
-  const navigate = useNavigate();
+  const hasImages = purchase.announcement?.images && purchase.announcement.images.length > 0;
+  const gridSize = hasImages ? 9 : 12;
+  const announcement = purchase.announcement;
 
   return (
     <Card sx={{ mb: 2 }}>
       <Grid container>
-        {purchase.announcement?.images && purchase.announcement.images.length > 0 && (
+        {hasImages && announcement && (
           <Grid item xs={12} sm={3}>
             <CardMedia
               component="img"
               height="200"
-              image={purchase.announcement.images[0]}
-              alt={purchase.announcement.title}
+              image={announcement.images[0]}
+              alt={announcement.title}
               sx={{ objectFit: 'cover' }}
             />
           </Grid>
         )}
-        <Grid item xs={12} sm={purchase.announcement?.images && purchase.announcement.images.length > 0 ? 9 : 12}>
+        <Grid item xs={12} sm={gridSize}>
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
-              <Box>
-                <Typography variant="h6" gutterBottom>
-                  {purchase.announcement?.title || 'Annonce supprimée'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {isSeller
-                    ? `Acheteur: ${purchase.buyer?.firstName || ''} ${purchase.buyer?.lastName || ''} (${purchase.buyer?.email})`
-                    : `Vendeur: ${purchase.announcement?.seller?.firstName || ''} ${purchase.announcement?.seller?.lastName || ''} (${purchase.announcement?.seller?.email})`}
-                </Typography>
-              </Box>
-              <Typography variant="h6" color="primary" fontWeight="bold">
-                {purchase.amount.toFixed(2)} €
-              </Typography>
-            </Box>
+            <PurchaseCardHeader purchase={purchase} isSeller={isSeller} />
 
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
               <PurchaseStatusChip status={purchase.status as 'PENDING' | 'COMPLETED' | 'CANCELLED'} />
@@ -68,43 +54,13 @@ export function PurchaseCard({ purchase, isSeller, onUpdateStatus }: PurchaseCar
               )}
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', fontSize: '0.875rem', color: 'text.secondary' }}>
-              <Typography variant="body2">
-                Commandé le: {new Date(purchase.createdAt).toLocaleDateString('fr-FR')}
-              </Typography>
-              {purchase.shippedAt && (
-                <Typography variant="body2">
-                  Expédié le: {new Date(purchase.shippedAt).toLocaleDateString('fr-FR')}
-                </Typography>
-              )}
-              {purchase.deliveredAt && (
-                <Typography variant="body2" color="success.main">
-                  Livré le: {new Date(purchase.deliveredAt).toLocaleDateString('fr-FR')}
-                </Typography>
-              )}
-            </Box>
+            <PurchaseCardDates purchase={purchase} />
           </CardContent>
-          <CardActions>
-            <Button
-              size="small"
-              onClick={() => navigate(`/announcements/${purchase.announcementId}`)}
-            >
-              Voir l'annonce
-            </Button>
-            {isSeller &&
-              purchase.status === 'COMPLETED' &&
-              purchase.deliveryStatus !== 'DELIVERED' &&
-              purchase.deliveryStatus !== 'CANCELLED' &&
-              onUpdateStatus && (
-                <Button
-                  size="small"
-                  startIcon={<Edit />}
-                  onClick={() => onUpdateStatus(purchase)}
-                >
-                  Mettre à jour la livraison
-                </Button>
-              )}
-          </CardActions>
+          <PurchaseCardActions
+            purchase={purchase}
+            isSeller={isSeller}
+            onUpdateStatus={onUpdateStatus}
+          />
         </Grid>
       </Grid>
     </Card>
