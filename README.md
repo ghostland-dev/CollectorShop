@@ -3,41 +3,10 @@
 ## Table des matières
 
 1. [Vue d'ensemble](#vue-densemble)
-2. [Grille de notation d'évaluation](#grille-de-notation-dévaluation)
-3. [Phase 1 - Structuration du processus de développement](#phase-1)
-4. [Phase 2 - Développement + POC](#phase-2)
-5. [Phase 3 - Analyse sécurité et plan de remédiation](#phase-3)
-6. [Installation et déploiement](#installation)
-
----
-
-## Grille de notation d'évaluation
-
-### Tableau récapitulatif
-
-| Thèmes | Critères | Points à attribuer | Preuve / Référence | Statut |
-|--------|----------|-------------------|-------------------|--------|
-| **Maintenir et développer son expertise en développement d'applications** | | | | |
-| | Le protocole d'expérimentation en bac à sable est présenté. Il comprend les technologies et plateformes testées ainsi que leurs interactions. Les difficultés rencontrées et les résultats obtenus sont présentés et permettent de valider l'adoption des technologies. | **2** | Section [6.1 Protocole d'expérimentation](#61-protocole-dexpérimentation-intégration-prisma--postgresql) : Prisma + PostgreSQL testé, résultats documentés (type-safety, migrations, performance < 50ms), limites identifiées | ✅ |
-| | L'implémentation technique du POC valide la faisabilité des points clés de l'architecture de la solution applicative à développer (découpage applicatif, communication interservice, sécurité, hébergement, orchestration, etc.), elle est documentée. | **4** | Section [5. Architecture technique](#5-architecture-technique) : Architecture documentée avec schéma Mermaid, sécurité intégrée (JWT, RBAC, validation Zod), Docker Compose pour orchestration, MinIO pour stockage | ✅ |
-| | La fonctionnalité métier développée au niveau du POC répond aux besoins fonctionnels exprimés par la maîtrise d'ouvrage. | **1** | Section [4. Analyse des exigences + backlog](#4-analyse-des-exigences--backlog) : Backlog avec US-001, US-002, US-003. Section [7. Développement de la fonctionnalité](#7-développement-de-la-fonctionnalité) : Authentification, CRUD annonces, catalogue, panier implémentés | ✅ |
-| **Piloter le développement et le déploiement d'applications** | | | | |
-| | Le processus de livraison continue est schématisé. Il est conforme aux exigences de développement et de mise en production. Le POC intègre la plateforme de livraison continue conformément au processus décrit. | **3** | Section [2.1 Pipeline CI/CD](#21-pipeline-cicd) : Schéma du pipeline. Fichier `.github/workflows/ci-cd.yml` : Build, tests, lint, sécurité, build Docker, déploiement staging intégrés | ✅ |
-| | Les compétences de l'équipe sont recensées. Les expertises techniques à acquérir sont identifiées. Au moins une action de formation est proposée. | **1** | Section [3. Compétences et formation](#3-compétences-et-formation) : Cartographie des compétences (7 compétences), plan de formation avec 4 modules (Sécurité, DevSecOps, Tests, Observabilité) | ✅ |
-| | Le POC s'exécute dans un environnement managé. La disponibilité et la montée en charge de l'application sont démontrées. | **2** | Section [7.5 Environnement managé et tests de montée en charge](#75-environnement-managé-et-tests-de-montée-en-charge) : Environnement Docker Compose avec health checks, tests de charge documentés (Artillery + TypeScript), métriques de montée en charge (RPS, latence P50/P95/P99), capacité validée (100-150 utilisateurs simultanés), monitoring Grafana | ✅ |
-| **Élaborer le processus d'assurance qualité logicielle** | | | | |
-| | Au moins 4 indicateurs sont définis. Ils servent les objectifs de qualité logicielle (fonctionnalité, performance, maintenabilité, fiabilité). Leur mesure met en évidence des axes d'amélioration pouvant réduire la dette technique. | **1** | Section [1.0 Grille de notation des indicateurs qualité](#10-grille-de-notation-des-indicateurs-qualité) : 6 indicateurs définis (couverture tests, complexité, temps réponse P95/P99, taux erreurs, MTTR). Valeurs réelles mesurées et axes d'amélioration identifiés | ✅ |
-| | Le processus de test est formalisé. Il présente les différents types de tests, les outils de tests associés (unitaires, intégration, non régression, performances, fonctionnels, conformité réglementaire, etc.) et les parties prenantes. Au moins deux types de tests sont appliqués au POC. Ils sont exécutés avec succès. | **2** | Section [2.1 Pipeline CI/CD](#21-pipeline-cicd) : Processus formalisé. Tests unitaires (Jest) et tests d'intégration (Supertest) appliqués. Fichier `.github/workflows/ci-cd.yml` : Jobs `unit-tests` et `integration-tests` exécutés avec succès. Couverture : 82% | ✅ |
-| | Le plan de remédiation priorise les actions pour réduire les risques de sécurité critiques du parc applicatif du SI. Le POC intègre au moins deux bonnes pratiques pour sécuriser l'application. | **2** | Section [9.2 Failles OWASP potentielles](#92-failles-owasp-potentielles) : Grille d'analyse OWASP Top 10 avec priorités. Section [10. Plan de remédiation](#10-plan-de-remédiation) : Plan structuré. Section [5.3 Sécurité intégrée](#53-sécurité-intégrée) : JWT, RBAC, validation Zod, Helmet, CORS, rate limiting (plus de 2 bonnes pratiques) | ✅ |
-| **Présentation orale** | | | | |
-| | Les schémas et tableaux sont lisibles adaptés à une présentation orale. Ils sont utilisés pour supporter la prestation orale. | **1** | Schémas Mermaid (architecture), tableaux markdown (grilles de notation, compétences, métriques), diagrammes de pipeline. Tous lisibles et adaptés à une présentation | ✅ |
-| | La prestation orale est fluide et dynamique. Elle prend en compte l'auditoire. Le vocabulaire est précis et adapté. Elle est structurée. | **1** | À évaluer lors de la présentation orale | ⏳ |
-
-**Total des points** : **20 points**
-
-**Légende** :
-- ✅ Critère rempli avec preuve documentée
-- ⏳ À évaluer lors de la présentation orale
+2. [Phase 1 - Structuration du processus de développement](#phase-1)
+3. [Phase 2 - Développement + POC](#phase-2)
+4. [Phase 3 - Analyse sécurité et plan de remédiation](#phase-3)
+5. [Installation et déploiement](#installation)
 
 ---
 
