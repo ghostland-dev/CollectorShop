@@ -3,7 +3,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { authenticate, authorize } from '../utils/auth';
 import { logger } from '../utils/logger';
-import '../types/express';
+import { moderateAnnouncement, validateImages } from '../services/moderation.service';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -185,10 +185,53 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
       return;
     }
     const data = createAnnouncementSchema.parse(req.body);
+
+    // Validation des images
+    const imageValidation = validateImages(data.images || []);
+    if (!imageValidation.valid) {
+      res.status(400).json({
+        error: 'URLs d\'images invalides',
+        invalidUrls: imageValidation.invalidUrls,
+      });
+      return;
+    }
+
+    // Modération automatique
+    const existingTitles = await prisma.announcement.findMany({
+      where: { sellerId: user.userId },
+      select: { title: true },
+    });
+
+    const moderationResult = await moderateAnnouncement({
+      title: data.title,
+      description: data.description,
+      price: data.price,
+      category: data.category,
+      existingTitles: existingTitles.map((a) => a.title),
+    });
+
+    if (!moderationResult.approved) {
+      logger.warn('Annonce rejetée par la modération automatique', {
+        sellerId: user.userId,
+        reasons: moderationResult.reasons,
+        score: moderationResult.score,
+      });
+      res.status(400).json({
+        error: 'Annonce rejetée par la modération automatique',
+        reasons: moderationResult.reasons,
+        score: moderationResult.score,
+      });
+      return;
+    }
+
     const announcementData = await createAnnouncementData(user.userId, data);
     const announcement = await createAnnouncementWithSeller(announcementData);
 
-    logger.info('Annonce créée', { announcementId: announcement.id, sellerId: user.userId });
+    logger.info('Annonce créée', {
+      announcementId: announcement.id,
+      sellerId: user.userId,
+      moderationScore: moderationResult.score,
+    });
     res.status(201).json({ message: 'Annonce créée avec succès', announcement });
   } catch (error) {
     handleAnnouncementCreationError(error, req.user?.userId, res);
