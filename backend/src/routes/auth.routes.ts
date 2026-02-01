@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { hashPassword, comparePassword, generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/auth';
 import { logger } from '../utils/logger';
 import { authenticate } from '../utils/auth';
+import { logAuditSuccess, logAuditFailure, AuditAction, getAuditContext } from '../utils/audit-logger';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -72,8 +73,19 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
   try {
     const data = registerSchema.parse(req.body);
     const result = await handleUserRegistration(data);
+    const context = getAuditContext(req);
 
     logger.info('Nouvel utilisateur créé', { userId: result.user.id, email: result.user.email });
+    
+    // 🔒 AUDIT LOG: Enregistrement d'un nouvel utilisateur
+    logAuditSuccess(AuditAction.USER_REGISTER, result.user.id, {
+      userEmail: result.user.email,
+      userRole: result.user.role,
+      resourceType: 'User',
+      resourceId: result.user.id,
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+    });
 
     res.status(201).json({
       message: 'Utilisateur créé avec succès',

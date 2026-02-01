@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { authenticate, authorize } from '../utils/auth';
 import { logger } from '../utils/logger';
 import { moderateAnnouncement, validateImages } from '../services/moderation.service';
+import { logAuditSuccess, logModerationReject, AuditAction, getAuditContext } from '../utils/audit-logger';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -214,6 +215,16 @@ async function runModerationCheck(
       reasons: moderationResult.reasons,
       score: moderationResult.score,
     });
+    
+    // 🔒 AUDIT LOG: Rejet par modération
+    logModerationReject(
+      userId,
+      'Announcement',
+      'pending',
+      moderationResult.reasons,
+      moderationResult.score
+    );
+    
     res.status(400).json({
       error: 'Annonce rejetée par la modération automatique',
       reasons: moderationResult.reasons,
@@ -246,12 +257,30 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
 
     const announcementData = await createAnnouncementData(user.userId, data);
     const announcement = await createAnnouncementWithSeller(announcementData);
+    const context = getAuditContext(req);
 
     logger.info('Annonce créée', {
       announcementId: announcement.id,
       sellerId: user.userId,
       moderationScore: moderationResult.score,
     });
+    
+    // 🔒 AUDIT LOG: Création d'annonce
+    logAuditSuccess(AuditAction.ANNOUNCEMENT_CREATE, user.userId, {
+      userEmail: user.email,
+      userRole: user.role,
+      resourceType: 'Announcement',
+      resourceId: announcement.id,
+      details: {
+        title: data.title,
+        price: data.price,
+        category: data.category,
+        moderationScore: moderationResult.score,
+      },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+    });
+    
     res.status(201).json({ message: 'Annonce créée avec succès', announcement });
   } catch (error) {
     handleAnnouncementCreationError(error, req.user?.userId, res);

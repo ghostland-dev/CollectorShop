@@ -16,6 +16,38 @@ import { metricsService } from './services/metrics.service';
 
 dotenv.config();
 
+// ⚠️ SECURITY: Fail-fast si secrets critiques manquants en production
+if (process.env.NODE_ENV === 'production') {
+  const requiredSecrets = [
+    'JWT_SECRET',
+    'JWT_REFRESH_SECRET',
+    'DATABASE_URL',
+    'FRONTEND_URL'
+  ];
+
+  const missingSecrets = requiredSecrets.filter(secret => {
+    const value = process.env[secret];
+    // Vérifier que le secret existe ET n'est pas une valeur par défaut dangereuse
+    if (!value) return true;
+    if (secret === 'JWT_SECRET' && value === 'change-me-in-production') return true;
+    if (secret === 'JWT_REFRESH_SECRET' && value === 'change-me-in-production-refresh') return true;
+    return false;
+  });
+
+  if (missingSecrets.length > 0) {
+    logger.error('❌ ERREUR CRITIQUE : Secrets manquants ou invalides en production', {
+      missingSecrets,
+      env: process.env.NODE_ENV
+    });
+    console.error('\n🚨 DÉPLOIEMENT BLOQUÉ : Les secrets suivants sont requis en production:');
+    missingSecrets.forEach(secret => console.error(`  - ${secret}`));
+    console.error('\nVeuillez définir ces variables d\'environnement avant de démarrer l\'application.\n');
+    process.exit(1);
+  }
+
+  logger.info('✅ Validation des secrets : OK', { env: 'production' });
+}
+
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;

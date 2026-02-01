@@ -3,6 +3,7 @@ import { PrismaClient, DeliveryStatus } from '@prisma/client';
 import { z } from 'zod';
 import { authenticate, authorize } from '../utils/auth';
 import { logger } from '../utils/logger';
+import { logAuditSuccess, logFraudDetection, AuditAction, getAuditContext, AuditSeverity } from '../utils/audit-logger';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -162,6 +163,19 @@ router.post('/', authenticate, authorize('BUYER', 'SELLER', 'ADMIN'), async (req
     // Détection de fraude
     const { detectFraudForPurchase } = await import('../services/fraud-detection.service');
     const fraudResult = await detectFraudForPurchase(user.userId, data.announcementId, announcement.price);
+    const context = getAuditContext(req);
+
+    // 🔒 AUDIT LOG: Détection de fraude
+    if (fraudResult.riskScore > 0) {
+      logFraudDetection(
+        user.userId,
+        'Purchase',
+        data.announcementId,
+        fraudResult.reasons,
+        fraudResult.riskScore,
+        fraudResult.action
+      );
+    }
 
     if (!handleFraudDetectionResult(fraudResult, user.userId, data.announcementId, res)) {
       return;
@@ -175,6 +189,23 @@ router.post('/', authenticate, authorize('BUYER', 'SELLER', 'ADMIN'), async (req
       buyerId: user.userId,
       fraudRiskScore: fraudResult.riskScore,
     });
+    
+    // 🔒 AUDIT LOG: Création d'achat
+    logAuditSuccess(AuditAction.PURCHASE_CREATE, user.userId, {
+      userEmail: user.email,
+      userRole: user.role,
+      resourceType: 'Purchase',
+      resourceId: purchase.id,
+      details: {
+        announcementId: data.announcementId,
+        amount: announcement.price,
+        fraudRiskScore: fraudResult.riskScore,
+      },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+      severity: fraudResult.riskScore > 30 ? AuditSeverity.WARNING : AuditSeverity.INFO,
+    });
+    
     res.status(201).json({ message: 'Achat créé avec succès', purchase });
   } catch (error) {
     handlePurchaseCreationError(error, res);

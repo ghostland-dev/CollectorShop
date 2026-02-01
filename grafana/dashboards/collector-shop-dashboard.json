@@ -31,27 +31,56 @@
       },
       {
         "id": 2,
-        "title": "Temps de réponse (P95)",
+        "title": "Temps de réponse (P50/P95/P99)",
         "type": "timeseries",
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
-            "legendFormat": "P95",
+            "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "P50 (médiane)",
             "refId": "A",
             "datasource": {"type": "prometheus", "uid": "VictoriaMetrics"}
           },
           {
-            "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
-            "legendFormat": "P50",
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "P95 (objectif < 200ms)",
             "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "VictoriaMetrics"}
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "P99 (objectif < 500ms)",
+            "refId": "C",
             "datasource": {"type": "prometheus", "uid": "VictoriaMetrics"}
           }
         ],
         "fieldConfig": {
           "defaults": {
             "unit": "s",
-            "custom": {}
+            "custom": {
+              "thresholdsStyle": {
+                "mode": "line"
+              }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 0.2, "color": "yellow"},
+                {"value": 0.5, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "tooltip": {
+            "mode": "multi",
+            "sort": "none"
+          },
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
           }
         }
       },
@@ -90,10 +119,104 @@
         ]
       },
       {
+        "id": 8,
+        "title": "Métriques de performance (ISO 25010)",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "VictoriaMetrics"}
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "refId": "B",
+            "datasource": {"type": "prometheus", "uid": "VictoriaMetrics"}
+          },
+          {
+            "expr": "sum(rate(http_errors_total[5m])) / sum(rate(http_requests_total[5m])) * 100",
+            "refId": "C",
+            "datasource": {"type": "prometheus", "uid": "VictoriaMetrics"}
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 180, "color": "yellow"},
+                {"value": 200, "color": "red"}
+              ]
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byFrameRefID", "options": "A"},
+              "properties": [
+                {"id": "displayName", "value": "P95 (objectif < 200ms)"},
+                {"id": "unit", "value": "ms"},
+                {"id": "thresholds", "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"value": null, "color": "green"},
+                    {"value": 180, "color": "yellow"},
+                    {"value": 200, "color": "red"}
+                  ]
+                }}
+              ]
+            },
+            {
+              "matcher": {"id": "byFrameRefID", "options": "B"},
+              "properties": [
+                {"id": "displayName", "value": "P99 (objectif < 500ms)"},
+                {"id": "unit", "value": "ms"},
+                {"id": "thresholds", "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"value": null, "color": "green"},
+                    {"value": 450, "color": "yellow"},
+                    {"value": 500, "color": "red"}
+                  ]
+                }}
+              ]
+            },
+            {
+              "matcher": {"id": "byFrameRefID", "options": "C"},
+              "properties": [
+                {"id": "displayName", "value": "Taux erreurs 5xx (objectif < 0.1%)"},
+                {"id": "unit", "value": "percent"},
+                {"id": "thresholds", "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"value": null, "color": "green"},
+                    {"value": 0.08, "color": "yellow"},
+                    {"value": 0.1, "color": "red"}
+                  ]
+                }}
+              ]
+            }
+          ]
+        }
+      },
+      {
         "id": 5,
         "title": "Connexions actives",
         "type": "stat",
-        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 16},
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 16},
         "targets": [
           {
             "expr": "active_connections",
@@ -116,7 +239,7 @@
         "id": 6,
         "title": "Durée des requêtes DB",
         "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
         "targets": [
           {
             "expr": "histogram_quantile(0.95, sum(rate(database_query_duration_seconds_bucket[5m])) by (le, table))",
@@ -136,7 +259,7 @@
         "id": 7,
         "title": "Cache Hits/Misses",
         "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
         "targets": [
           {
             "expr": "sum(rate(cache_hits_total[5m]))",

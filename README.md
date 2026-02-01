@@ -4,10 +4,11 @@
 
 1. [Vue d'ensemble](#vue-densemble)
    - [Grille d'évaluation des fonctionnalités](#grille-dévaluation-des-fonctionnalités)
-2. [Phase 1 - Structuration du processus de développement](#phase-1)
-3. [Phase 2 - Développement + POC](#phase-2)
-4. [Phase 3 - Analyse sécurité et plan de remédiation](#phase-3)
-5. [Installation et déploiement](#installation)
+2. [Démarrage rapide (Makefile)](#démarrage-rapide)
+3. [Phase 1 - Structuration du processus de développement](#phase-1)
+4. [Phase 2 - Développement + POC](#phase-2)
+5. [Phase 3 - Analyse sécurité et plan de remédiation](#phase-3)
+6. [Installation et déploiement](#installation)
 
 ---
 
@@ -51,6 +52,66 @@ Collector.shop est une plateforme de vente d'objets de collection entre particul
 - ✅ **Implémenté** : Fonctionnalité complètement développée et opérationnelle
 - ⚠️ **Partiel** : Fonctionnalité partiellement implémentée ou en version basique
 - ❌ **Non implémenté** : Fonctionnalité absente du codebase
+
+---
+
+## Démarrage rapide
+
+### 🚀 Avec Makefile (recommandé)
+
+Le projet inclut un **Makefile** pour simplifier toutes les opérations :
+
+```bash
+# Afficher toutes les commandes disponibles
+make help
+
+# Setup complet du projet (première installation)
+make setup
+
+# Démarrer l'environnement de développement
+make dev
+
+# Lancer les tests
+make test
+
+# Vérifier le code (lint + tests)
+make check
+
+# Afficher le statut des services
+make status
+
+# Voir toutes les URLs utiles
+make urls
+```
+
+### 📋 Commandes principales
+
+| Commande | Description |
+|----------|-------------|
+| `make setup` | Installation complète (dépendances + DB + Docker + seed) |
+| `make dev` | Démarre backend + frontend en mode développement |
+| `make docker-up` | Démarre tous les services Docker |
+| `make test` | Lance tous les tests (backend + frontend) |
+| `make lint` | Vérifie le code avec ESLint |
+| `make seed` | Remplit la DB avec des données de test |
+| `make clean` | Nettoie tous les fichiers générés |
+
+### 🔗 URLs après `make setup`
+
+- **Frontend** : http://localhost:3000
+- **Backend** : http://localhost:5000
+- **Grafana** : http://localhost:3001 (admin/admin123)
+- **MinIO Console** : http://localhost:9001 (minioadmin/minioadmin123)
+
+### 👤 Comptes de test (mot de passe: `password123`)
+
+- `admin@collector.shop` (ADMIN)
+- `vendeur1@collector.shop` (SELLER)
+- `acheteur1@collector.shop` (BUYER)
+
+> 💡 **Astuce** : Utilisez `make help` pour voir toutes les commandes disponibles (50+ commandes)
+
+---
 
 **Détails par fonctionnalité** :
 
