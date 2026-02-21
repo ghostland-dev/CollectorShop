@@ -1,7 +1,7 @@
 # Makefile - Collector.shop
 # Simplifie les opérations courantes du projet
 
-.PHONY: help install dev build test clean docker-up docker-down docker-restart logs seed migrate lint format audit
+.PHONY: help install dev build test clean docker-up docker-down docker-restart logs seed migrate lint format audit k8s-start k8s-stop k8s-restart k8s-status k8s-logs k8s-urls k8s-clean
 
 # Couleurs pour l'affichage
 BLUE := \033[0;34m
@@ -391,6 +391,171 @@ shell-db: ## Ouvre un shell PostgreSQL
 
 shell-redis: ## Ouvre un shell Redis
 	@docker-compose exec redis redis-cli
+
+##@ Kubernetes (Minikube)
+
+k8s-start: ## Démarre et déploie sur Minikube
+	@echo "$(BLUE)🚀 Déploiement sur Minikube...$(NC)"
+	@./deploy-minikube.sh start
+
+k8s-stop: ## Arrête Minikube
+	@echo "$(BLUE)🛑 Arrêt de Minikube...$(NC)"
+	@./deploy-minikube.sh stop
+
+k8s-restart: ## Redémarre les déploiements Kubernetes
+	@echo "$(BLUE)🔄 Redémarrage des déploiements...$(NC)"
+	@./deploy-minikube.sh restart
+
+k8s-status: ## Affiche le statut des pods et services
+	@echo "$(BLUE)📊 Statut Kubernetes$(NC)"
+	@./deploy-minikube.sh status
+
+k8s-logs: ## Affiche les logs (usage: make k8s-logs SERVICE=backend)
+	@if [ -z "$(SERVICE)" ]; then \
+		echo "$(YELLOW)Usage: make k8s-logs SERVICE=<backend|frontend|postgres|redis|minio|victoriametrics|grafana>$(NC)"; \
+		exit 1; \
+	fi
+	@./deploy-minikube.sh logs $(SERVICE)
+
+k8s-urls: ## Affiche les URLs d'accès aux services
+	@echo "$(BLUE)🔗 URLs d'accès$(NC)"
+	@./deploy-minikube.sh urls
+
+k8s-clean: ## Nettoie le déploiement Kubernetes
+	@echo "$(BLUE)🧹 Nettoyage Kubernetes...$(NC)"
+	@./deploy-minikube.sh clean
+
+k8s-dashboard: ## Ouvre le dashboard Kubernetes
+	@echo "$(BLUE)📊 Ouverture du dashboard Kubernetes...$(NC)"
+	@minikube dashboard
+
+k8s-shell-backend: ## Ouvre un shell dans un pod backend
+	@echo "$(BLUE)🐚 Shell backend...$(NC)"
+	@kubectl exec -it -n collector-shop $$(kubectl get pods -n collector-shop -l app=backend -o jsonpath='{.items[0].metadata.name}') -- sh
+
+k8s-shell-db: ## Ouvre un shell PostgreSQL dans Kubernetes
+	@echo "$(BLUE)🐚 Shell PostgreSQL...$(NC)"
+	@kubectl exec -it -n collector-shop $$(kubectl get pods -n collector-shop -l app=postgres -o jsonpath='{.items[0].metadata.name}') -- psql -U collector collector_shop
+
+k8s-pods: ## Liste tous les pods
+	@echo "$(BLUE)📦 Pods Kubernetes$(NC)"
+	@kubectl get pods -n collector-shop
+
+k8s-services: ## Liste tous les services
+	@echo "$(BLUE)🔌 Services Kubernetes$(NC)"
+	@kubectl get services -n collector-shop
+
+k8s-deployments: ## Liste tous les déploiements
+	@echo "$(BLUE)🚀 Déploiements Kubernetes$(NC)"
+	@kubectl get deployments -n collector-shop
+
+k8s-pvc: ## Liste les PersistentVolumeClaims
+	@echo "$(BLUE)💾 PersistentVolumeClaims$(NC)"
+	@kubectl get pvc -n collector-shop
+
+k8s-events: ## Affiche les événements récents
+	@echo "$(BLUE)📋 Événements Kubernetes$(NC)"
+	@kubectl get events -n collector-shop --sort-by='.lastTimestamp' | tail -20
+
+k8s-describe-pod: ## Décrit un pod (usage: make k8s-describe-pod POD=<name>)
+	@if [ -z "$(POD)" ]; then \
+		echo "$(YELLOW)Usage: make k8s-describe-pod POD=<pod-name>$(NC)"; \
+		echo "$(YELLOW)Liste des pods:$(NC)"; \
+		kubectl get pods -n collector-shop; \
+		exit 1; \
+	fi
+	@kubectl describe pod $(POD) -n collector-shop
+
+k8s-scale-backend: ## Scale le backend (usage: make k8s-scale-backend REPLICAS=3)
+	@if [ -z "$(REPLICAS)" ]; then \
+		echo "$(YELLOW)Usage: make k8s-scale-backend REPLICAS=<number>$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)📈 Scaling backend à $(REPLICAS) replicas...$(NC)"
+	@kubectl scale deployment backend -n collector-shop --replicas=$(REPLICAS)
+	@echo "$(GREEN)✅ Backend scalé à $(REPLICAS) replicas$(NC)"
+
+k8s-scale-frontend: ## Scale le frontend (usage: make k8s-scale-frontend REPLICAS=3)
+	@if [ -z "$(REPLICAS)" ]; then \
+		echo "$(YELLOW)Usage: make k8s-scale-frontend REPLICAS=<number>$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)📈 Scaling frontend à $(REPLICAS) replicas...$(NC)"
+	@kubectl scale deployment frontend -n collector-shop --replicas=$(REPLICAS)
+	@echo "$(GREEN)✅ Frontend scalé à $(REPLICAS) replicas$(NC)"
+
+k8s-port-forward-backend: ## Port-forward le backend (5000:5000)
+	@echo "$(BLUE)🔀 Port-forward backend 5000:5000...$(NC)"
+	@kubectl port-forward -n collector-shop svc/backend 5000:5000
+
+k8s-port-forward-frontend: ## Port-forward le frontend (3000:80)
+	@echo "$(BLUE)🔀 Port-forward frontend 3000:80...$(NC)"
+	@kubectl port-forward -n collector-shop svc/frontend 3000:80
+
+k8s-port-forward-grafana: ## Port-forward Grafana (3001:3000)
+	@echo "$(BLUE)🔀 Port-forward Grafana 3001:3000...$(NC)"
+	@kubectl port-forward -n collector-shop svc/grafana 3001:3000
+
+k8s-port-forward-loki: ## Port-forward Loki (3100:3100)
+	@echo "$(BLUE)🔀 Port-forward Loki 3100:3100...$(NC)"
+	@kubectl port-forward -n collector-shop svc/loki 3100:3100
+
+k8s-port-forward-victoriametrics: ## Port-forward VictoriaMetrics (8428:8428)
+	@echo "$(BLUE)🔀 Port-forward VictoriaMetrics 8428:8428...$(NC)"
+	@kubectl port-forward -n collector-shop svc/victoriametrics 8428:8428
+
+k8s-logs-loki: ## Affiche les logs de Loki
+	@echo "$(BLUE)📋 Logs de Loki$(NC)"
+	@kubectl logs -n collector-shop -l app=loki --tail=100
+
+k8s-logs-promtail: ## Affiche les logs de Promtail
+	@echo "$(BLUE)📋 Logs de Promtail$(NC)"
+	@kubectl logs -n collector-shop -l app=promtail --tail=50
+
+k8s-rebuild-backend: ## Rebuild et redéploie le backend
+	@echo "$(BLUE)🔨 Rebuild backend...$(NC)"
+	@eval $$(minikube docker-env) && docker build -t collector-shop-backend:latest -f backend/Dockerfile backend/
+	@kubectl rollout restart deployment backend -n collector-shop
+	@echo "$(GREEN)✅ Backend redéployé$(NC)"
+
+k8s-rebuild-frontend: ## Rebuild et redéploie le frontend
+	@echo "$(BLUE)🔨 Rebuild frontend...$(NC)"
+	@eval $$(minikube docker-env) && docker build -t collector-shop-frontend:latest -f frontend/Dockerfile .
+	@kubectl rollout restart deployment frontend -n collector-shop
+	@echo "$(GREEN)✅ Frontend redéployé$(NC)"
+
+k8s-migrate: ## Exécute les migrations Prisma dans Kubernetes
+	@echo "$(BLUE)🔄 Migrations Prisma...$(NC)"
+	@kubectl exec -n collector-shop $$(kubectl get pods -n collector-shop -l app=backend -o jsonpath='{.items[0].metadata.name}') -- npx prisma migrate deploy
+	@echo "$(GREEN)✅ Migrations terminées$(NC)"
+
+k8s-seed: ## Seed la base de données dans Kubernetes
+	@echo "$(BLUE)🌱 Seed de la base de données...$(NC)"
+	@kubectl exec -n collector-shop $$(kubectl get pods -n collector-shop -l app=backend -o jsonpath='{.items[0].metadata.name}') -- npm run prisma:seed
+	@echo "$(GREEN)✅ Seed terminé$(NC)"
+
+k8s-top: ## Affiche les métriques CPU/RAM des pods
+	@echo "$(BLUE)📊 Métriques des pods$(NC)"
+	@kubectl top pods -n collector-shop
+
+k8s-top-nodes: ## Affiche les métriques CPU/RAM des nodes
+	@echo "$(BLUE)📊 Métriques des nodes$(NC)"
+	@kubectl top nodes
+
+k8s-info: ## Affiche les informations du cluster Minikube
+	@echo "$(BLUE)ℹ️  Informations Minikube$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Minikube:$(NC)"
+	@minikube version
+	@echo ""
+	@echo "$(YELLOW)kubectl:$(NC)"
+	@kubectl version --client
+	@echo ""
+	@echo "$(YELLOW)Cluster:$(NC)"
+	@minikube status
+	@echo ""
+	@echo "$(YELLOW)IP Minikube:$(NC)"
+	@minikube ip
 
 # Commande par défaut
 .DEFAULT_GOAL := help
