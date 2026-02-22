@@ -150,6 +150,7 @@ function handlePurchaseCreationError(error: unknown, res: Response): void {
 }
 
 // Créer un achat (BUYER, SELLER ou ADMIN)
+// eslint-disable-next-line max-lines-per-function
 router.post('/', authenticate, authorize('BUYER', 'SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
     const user = req.user;

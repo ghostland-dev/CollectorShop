@@ -4,6 +4,7 @@
  */
 
 import { logger } from './logger';
+import { Request } from 'express';
 
 export enum AuditAction {
   // Authentification
@@ -239,18 +240,21 @@ export function logAccessDenied(
 /**
  * Middleware Express pour extraire les informations de contexte
  */
-export function getAuditContext(req: any): {
+export function getAuditContext(req: Request): {
   ipAddress?: string;
   userAgent?: string;
   userId?: string;
   userEmail?: string;
   userRole?: string;
 } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userFromReq = (req as any).user;
+  
   return {
     ipAddress: (req.headers?.['x-forwarded-for'] as string) || req.socket?.remoteAddress,
     userAgent: req.headers?.['user-agent'],
-    userId: req.user?.userId,
-    userEmail: req.user?.email,
-    userRole: req.user?.role,
+    userId: userFromReq?.userId,
+    userEmail: userFromReq?.email,
+    userRole: userFromReq?.role,
   };
 }

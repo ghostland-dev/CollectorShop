@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { hashPassword, comparePassword, generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/auth';
 import { logger } from '../utils/logger';
 import { authenticate } from '../utils/auth';
-import { logAuditSuccess, logAuditFailure, AuditAction, getAuditContext } from '../utils/audit-logger';
+import { logAuditSuccess, AuditAction, getAuditContext } from '../utils/audit-logger';
 
 const router = Router();
 const prisma = new PrismaClient();
