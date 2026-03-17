@@ -119,4 +119,9 @@ spec:
       kind: Deployment
       jsonPointers:
         - /spec/replicas
+    - group: ""
+      kind: PersistentVolume
+      name: postgres-pv
+      jsonPointers:
+        - /spec/claimRef
   revisionHistoryLimit: 10
