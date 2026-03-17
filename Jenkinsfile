@@ -257,36 +257,27 @@ pipeline {
         // ─────────────────────────────────────────────────────────────────────
         stage('Scan de Sécurité Conteneurs') {
         // ─────────────────────────────────────────────────────────────────────
-            parallel {
+            // Scans séquentiels : Trivy utilise un verrou sur sa base de données,
+            // deux scans parallèles provoqueraient un conflit de cache.
+            steps {
+                sh """
+                    echo "=== Scan Trivy — Backend ==="
+                    trivy image \\
+                        --exit-code 0 \\
+                        --severity HIGH,CRITICAL \\
+                        --format table \\
+                        --timeout 10m \\
+                        ${PROJECT_NAME}-backend:${BUILD_NUMBER}
 
-                stage('Trivy — Backend') {
-                    steps {
-                        sh """
-                            echo "Scan Trivy sur l'image backend..."
-                            trivy image \\
-                                --exit-code 0 \\
-                                --severity HIGH,CRITICAL \\
-                                --format table \\
-                                --timeout 10m \\
-                                ${PROJECT_NAME}-backend:${BUILD_NUMBER}
-                        """
-                    }
-                }
-
-                stage('Trivy — Frontend') {
-                    steps {
-                        sh """
-                            echo "Scan Trivy sur l'image frontend..."
-                            trivy image \\
-                                --exit-code 0 \\
-                                --severity HIGH,CRITICAL \\
-                                --format table \\
-                                --timeout 10m \\
-                                ${PROJECT_NAME}-frontend:${BUILD_NUMBER}
-                        """
-                    }
-                }
-
+                    echo "=== Scan Trivy — Frontend ==="
+                    trivy image \\
+                        --exit-code 0 \\
+                        --severity HIGH,CRITICAL \\
+                        --format table \\
+                        --skip-db-update \\
+                        --timeout 10m \\
+                        ${PROJECT_NAME}-frontend:${BUILD_NUMBER}
+                """
             }
         }
 
