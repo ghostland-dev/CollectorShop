@@ -63,19 +63,35 @@
 
 ---
 
-## 🌐 URLs & Accès
+## 🌐 URLs & Accès (HTTPS)
 
-> Tous les alias sont définis dans `/etc/hosts` → `192.168.49.2` (IP Minikube)
+> Tous les alias sont définis dans `/etc/hosts` → `192.168.49.2` (IP Minikube).  
+> Accès HTTPS standard (port 443) via proxy nginx + iptables DNAT.
 
-| Service | URL | Identifiants |
-|---------|-----|--------------|
-| **Frontend** | `https://shopcollector.local:32390` | — |
-| **Backend API** | `https://api.shopcollector.local:32390` | — |
-| **Grafana** | `https://grafana.shopcollector.local:32390` | `admin / admin` |
-| **ArgoCD** | `http://argocd.shopcollector.local:31080` | `admin / OUo-HzdTSjWpv0vt` |
-| **Gitea** | `http://gitea.shopcollector.local:31200` | `gitea-admin / gitea-admin-2026` |
+| Service | URL HTTPS | Identifiants |
+|---------|-----------|--------------|
+| **Frontend (prod)** | `https://shopcollector.local` | — |
+| **Backend API (prod)** | `https://api.shopcollector.local` | — |
+| **Grafana** | `https://grafana.shopcollector.local` | `admin / admin` |
+| **ArgoCD** | `https://argocd.shopcollector.local` | `admin / OUo-HzdTSjWpv0vt` |
+| **Gitea** | `https://gitea.shopcollector.local` | `gitea-admin / gitea-admin-2026` |
 | **Jenkins** | `http://jenkins.shopcollector.local:8080` | `admin / admin` |
-| **Netdata** | `http://netdata.shopcollector.local:30199` | — |
+| **Netdata** | `https://netdata.shopcollector.local` | — |
+| **SonarCloud** | `https://sonarcloud.io/project/overview?id=goodfood-apps_collector-shop` | — |
+
+### Environnements (3 apps ArgoCD)
+
+| Environnement | Namespace | Frontend | API | ArgoCD App |
+|---------------|-----------|----------|-----|------------|
+| **Production** | `collector-shop` | `https://shopcollector.local` | `https://api.shopcollector.local` | `collector-shop-production` |
+| **Staging** | `collector-shop-staging` | `https://staging.shopcollector.local` | `https://api-staging.shopcollector.local` | `collector-shop-staging` |
+| **Dev** | `collector-shop-dev` | `https://dev.shopcollector.local` | `https://api-dev.shopcollector.local` | `collector-shop-dev` |
+
+> Pour staging et dev, ajouter dans `/etc/hosts` :
+> ```
+> 192.168.49.2 dev.shopcollector.local api-dev.shopcollector.local grafana-dev.shopcollector.local
+> 192.168.49.2 staging.shopcollector.local api-staging.shopcollector.local grafana-staging.shopcollector.local
+> ```
 
 ### Comptes de test (seed)
 
@@ -104,23 +120,27 @@
 kubectl get secret shopcollector-tls -n collector-shop
 ```
 
-### Ports Nginx Ingress
+### Accès HTTPS (port 443 standard)
 
-| Protocole | NodePort |
-|-----------|----------|
-| HTTP (redirigé → HTTPS) | `32460` |
-| HTTPS | `32390` |
+Un proxy nginx sur l'hôte écoute sur le port 443 et redirige vers l'Ingress Minikube (NodePort 32390).  
+Les règles iptables DNAT redirigent `192.168.49.2:443` → `127.0.0.1:443`.
+
+| Protocole | Port | Rôle |
+|-----------|------|------|
+| HTTPS | `443` | Accès standard (shopcollector.local, api.shopcollector.local, etc.) |
+| HTTP | `80` | Redirection 308 → HTTPS |
 
 ### Règles Ingress
 
 ```
-https://shopcollector.local:32390       → service/frontend:80
-https://api.shopcollector.local:32390   → service/backend:5000
-https://grafana.shopcollector.local:32390 → service/grafana:3000
+https://shopcollector.local       → service/frontend:80 (prod)
+https://api.shopcollector.local    → service/backend:5000 (prod)
+https://grafana.shopcollector.local → service/grafana:3000
+https://dev.shopcollector.local    → frontend (namespace collector-shop-dev)
+https://staging.shopcollector.local → frontend (namespace collector-shop-staging)
 ```
 
-> Le navigateur affiche un avertissement "certificat non approuvé" (auto-signé).  
-> Cliquer **Avancé → Continuer** pour accéder au site.
+> Certificat mkcert (wildcard `*.shopcollector.local`) — exécuter `mkcert -install` pour faire confiance au CA.
 
 ---
 
@@ -266,10 +286,18 @@ make argocd-open            # Ouvrir l'UI dans le navigateur
 ```
 k8s/argocd/
 ├── namespace.yaml              # Namespace argocd
-├── project.yaml                # AppProject collector-shop (Gitea + GitHub autorisés)
-├── application.yaml            # Application (source: Gitea, auto-sync)
+├── project.yaml                # AppProject collector-shop (namespaces dev/staging/prod autorisés)
+├── applications.yaml           # 3 Applications (dev, staging, production) — auto-sync Gitea
 └── jenkins-serviceaccount.yaml # ServiceAccount Jenkins pour les syncs
 ```
+
+### Applications ArgoCD (3 environnements)
+
+| Application | Overlay | Namespace | Rôle |
+|-------------|---------|-----------|------|
+| `collector-shop-dev` | `k8s/overlays/dev` | `collector-shop-dev` | Développement (1 replica) |
+| `collector-shop-staging` | `k8s/overlays/staging` | `collector-shop-staging` | Pré-production (2 replicas) |
+| `collector-shop-production` | `k8s/overlays/minikube` | `collector-shop` | Production (HPA 2→6) |
 
 ---
 
@@ -405,7 +433,7 @@ k8s/
 ├── argocd/
 │   ├── namespace.yaml
 │   ├── project.yaml            # AppProject (Gitea + GitHub autorisés)
-│   ├── application.yaml        # Application auto-sync → Gitea
+│   ├── applications.yaml       # 3 Applications (dev, staging, production)
 │   └── jenkins-serviceaccount.yaml
 └── monitoring/
     └── netdata/
@@ -440,7 +468,7 @@ git push → Gitea
            └── kustomize edit set image → backend:N / frontend:N
            └── git commit + push → Gitea
 [Stage 10] Déploiement ArgoCD
-           └── argocd app sync collector-shop
+           └── argocd app sync collector-shop-production
            └── argocd app wait --health --timeout=300
 [Stage 11] Tests de Charge Artillery (post-déploiement)
            └── target: http://$(minikube ip):31000
@@ -461,7 +489,7 @@ make infra-down        # Arrête tout
 # ── ArgoCD ───────────────────────────────────────────────────────────
 make argocd-install    # Installe ArgoCD en NodePort 31080
 make argocd-password   # Mot de passe admin
-make argocd-open       # Ouvre http://argocd.shopcollector.local:31080
+make argocd-open       # Ouvre https://argocd.shopcollector.local
 make argocd-sync       # Force une synchronisation
 make argocd-history    # Historique des déploiements
 make argocd-rollback REV=N  # Rollback vers la révision N
@@ -480,7 +508,7 @@ make k8s-urls          # Affiche toutes les URLs
 
 # ── Netdata ───────────────────────────────────────────────────────────
 make netdata-install   # Déploie Parent + DaemonSet
-make netdata-open      # Ouvre http://netdata.shopcollector.local:30199
+make netdata-open      # Ouvre https://netdata.shopcollector.local
 make netdata-status    # Statut pods (parent + children)
 make netdata-logs      # Logs du parent en temps réel
 make netdata-clean     # Supprime Netdata

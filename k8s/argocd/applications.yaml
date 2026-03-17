@@ -1,0 +1,122 @@
+# ─── ArgoCD Applications — 3 environnements (dev, staging, production) ─────────
+# Déployer : kubectl apply -f k8s/argocd/applications.yaml
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: collector-shop-dev
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: collector-shop
+    environment: dev
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: collector-shop
+  source:
+    repoURL: "http://gitea.gitea.svc.cluster.local:3000/gitea-admin/collector-shop.git"
+    targetRevision: main
+    path: k8s/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: collector-shop-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff:
+        duration: "10s"
+        factor: 2
+        maxDuration: "3m"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+  revisionHistoryLimit: 10
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: collector-shop-staging
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: collector-shop
+    environment: staging
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: collector-shop
+  source:
+    repoURL: "http://gitea.gitea.svc.cluster.local:3000/gitea-admin/collector-shop.git"
+    targetRevision: main
+    path: k8s/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: collector-shop-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff:
+        duration: "10s"
+        factor: 2
+        maxDuration: "3m"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+  revisionHistoryLimit: 10
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: collector-shop-production
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: collector-shop
+    environment: production
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: collector-shop
+  source:
+    repoURL: "http://gitea.gitea.svc.cluster.local:3000/gitea-admin/collector-shop.git"
+    targetRevision: main
+    path: k8s/overlays/minikube
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: collector-shop
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff:
+        duration: "10s"
+        factor: 2
+        maxDuration: "3m"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+  revisionHistoryLimit: 10

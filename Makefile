@@ -617,7 +617,7 @@ argocd-install: ## Installe ArgoCD sur Minikube (namespace argocd)
 	@kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort", "ports": [{"port": 443, "targetPort": 8080, "nodePort": 30080, "protocol": "TCP"}]}}'
 	@echo "$(BLUE)Application du projet ArgoCD...$(NC)"
 	@kubectl apply -f k8s/argocd/project.yaml
-	@kubectl apply -f k8s/argocd/application.yaml
+	@kubectl apply -f k8s/argocd/applications.yaml
 	@kubectl apply -f k8s/argocd/jenkins-serviceaccount.yaml
 	@echo ""
 	@echo "$(GREEN)✅ ArgoCD installé$(NC)"
@@ -663,7 +663,7 @@ argocd-rollback: ## Rollback ArgoCD vers la version précédente (usage: make ar
 
 argocd-clean: ## Supprime ArgoCD du cluster (⚠️ IRRÉVERSIBLE)
 	@echo "$(RED)⚠️  Suppression d'ArgoCD...$(NC)"
-	@kubectl delete -f k8s/argocd/application.yaml 2>/dev/null || true
+	@kubectl delete -f k8s/argocd/applications.yaml 2>/dev/null || true
 	@kubectl delete -f k8s/argocd/project.yaml 2>/dev/null || true
 	@kubectl delete -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml 2>/dev/null || true
 	@kubectl delete namespace argocd 2>/dev/null || true

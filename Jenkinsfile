@@ -55,7 +55,7 @@ pipeline {
 
         // ─── ArgoCD (REST API — évite les problèmes d'auth CLI v3) ───────────
         ARGOCD_SERVER       = '192.168.49.2:31080'
-        ARGOCD_APP          = 'collector-shop'
+        ARGOCD_APP          = 'collector-shop-production'
 
         // ─── Minikube ─────────────────────────────────────────────────────────
         MINIKUBE_BACKEND_URL  = 'https://api.shopcollector.local'

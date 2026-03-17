@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface CollectorLogoProps {
   size?: number;
   showText?: boolean;
