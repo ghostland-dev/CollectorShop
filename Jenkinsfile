@@ -5,10 +5,10 @@
 //  FLUX PIPELINE
 //  ┌─────────────────────────────────────────────────────────────────────────┐
 //  │  1. Checkout & Installation                                             │
-//  │  2. Lint → Qualité → Compilation   (parallèle)                        │
-//  │  3. Tests Unitaires                (parallèle backend / frontend)      │
+//  │  2. Lint → Qualité → Compilation   (parallèle + SonarCloud)           │
+//  │  3. Tests Unitaires                (Jest + JUnit XML artifacts)        │
 //  │  4. Analyse Sécurité               (Trivy FS + npm audit)              │
-//  │  5. Build Images Docker            (parallèle backend / frontend)      │
+//  │  5. Build Images Docker            (build + scan + load Minikube)      │
 //  │  6. Vérification ArgoCD            (kustomize → Gitea → sync → wait)  │
 //  │  7. Tests de Charge & Intégration  (Artillery + health-checks live)    │
 //  │  8. Notification Discord           (post: success / failure / unstable)│
@@ -18,6 +18,7 @@
 //    - GITHUB_TOKEN      : token Gitea pour git push des manifests
 //    - ARGOCD_TOKEN      : session token ArgoCD (REST API)
 //    - DISCORD_WEBHOOK   : URL webhook Discord pour les notifications
+//    - SONAR_TOKEN       : token SonarCloud pour l'analyse qualité
 // =============================================================================
 
 pipeline {
@@ -57,8 +58,14 @@ pipeline {
         ARGOCD_APP          = 'collector-shop'
 
         // ─── Minikube ─────────────────────────────────────────────────────────
-        MINIKUBE_BACKEND_URL = 'http://192.168.49.2:31000'
+        MINIKUBE_BACKEND_URL  = 'http://192.168.49.2:31000'
         MINIKUBE_FRONTEND_URL = 'http://192.168.49.2:31001'
+        // Docker daemon interne Minikube (TLS) — pour charger les images built
+        MINIKUBE_DOCKER_HOST  = 'tcp://192.168.49.2:2376'
+        MINIKUBE_CERTS        = '/home/ismail/.minikube/certs'
+
+        // ─── SonarCloud ───────────────────────────────────────────────────────
+        SONAR_HOST_URL      = 'https://sonarcloud.io'
 
         // ─── Artillery ────────────────────────────────────────────────────────
         ARTILLERY_CONFIG    = 'tests/load-tests/artillery.yml'
@@ -86,6 +93,7 @@ pipeline {
                     echo "══════════════════════════════════════════════════"
                 '''
                 sh 'npm install'
+                sh 'npm install jest-junit --save-dev --workspace=backend --workspace=frontend 2>/dev/null || npm install jest-junit --no-save'
                 sh '''
                     DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy \
                     npm run prisma:generate --workspace=backend
@@ -128,6 +136,25 @@ pipeline {
                             echo "=== Licences (top 10) ==="
                             npx license-checker --summary --production 2>/dev/null | head -10 || true
                         '''
+                    }
+                }
+
+                stage('SonarCloud') {
+                    steps {
+                        withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN_VAL')]) {
+                            sh """
+                                echo "=== Analyse SonarCloud ==="
+                                npx sonarqube-scanner \\
+                                    -Dsonar.host.url=${SONAR_HOST_URL} \\
+                                    -Dsonar.token=\${SONAR_TOKEN_VAL} \\
+                                    -Dsonar.projectKey=goodfood-apps_collector-shop \\
+                                    -Dsonar.organization=goodfood-apps \\
+                                    -Dsonar.projectVersion=${BUILD_NUMBER} \\
+                                    -Dsonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info \\
+                                    && echo "✅ SonarCloud : analyse envoyée" \\
+                                    || echo "⚠️  SonarCloud non disponible — analyse ignorée"
+                            """
+                        }
                     }
                 }
 
@@ -200,18 +227,32 @@ pipeline {
                         stage('Tests Unitaires Backend') {
                             steps {
                                 sh """
+                                    echo "=== Tests Backend (coverage + JUnit XML) ==="
+                                    mkdir -p backend/test-results
                                     DATABASE_URL=${DATABASE_URL} \\
                                     JWT_SECRET=${JWT_SECRET} \\
                                     JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET} \\
                                     NODE_ENV=test \\
-                                    npm run test:coverage --workspace=backend
+                                    JEST_JUNIT_OUTPUT_DIR=backend/test-results \\
+                                    JEST_JUNIT_OUTPUT_NAME=junit-backend.xml \\
+                                    JEST_JUNIT_CLASSNAME='{classname}' \\
+                                    JEST_JUNIT_TITLE='{title}' \\
+                                    npm run test:coverage --workspace=backend -- \\
+                                        --reporters=default --reporters=jest-junit \\
+                                        --forceExit 2>&1
+                                    echo "✅ Tests Backend : tous passés"
+                                    ls -la backend/test-results/ 2>/dev/null || true
                                 """
                             }
                             post {
                                 always {
+                                    junit(
+                                        testResults: 'backend/test-results/junit-backend.xml',
+                                        allowEmptyResults: true
+                                    )
                                     publishHTML(target: [
                                         allowMissing         : true,
-                                        alwaysLinkToLastBuild: false,
+                                        alwaysLinkToLastBuild: true,
                                         keepAll              : true,
                                         reportDir            : 'backend/coverage/lcov-report',
                                         reportFiles          : 'index.html',
@@ -225,13 +266,29 @@ pipeline {
 
                         stage('Tests Unitaires Frontend') {
                             steps {
-                                sh 'npm run test:coverage --workspace=frontend'
+                                sh """
+                                    echo "=== Tests Frontend (coverage + JUnit XML) ==="
+                                    mkdir -p frontend/test-results
+                                    JEST_JUNIT_OUTPUT_DIR=frontend/test-results \\
+                                    JEST_JUNIT_OUTPUT_NAME=junit-frontend.xml \\
+                                    JEST_JUNIT_CLASSNAME='{classname}' \\
+                                    JEST_JUNIT_TITLE='{title}' \\
+                                    npm run test:coverage --workspace=frontend -- \\
+                                        --reporters=default --reporters=jest-junit \\
+                                        --forceExit 2>&1
+                                    echo "✅ Tests Frontend : tous passés"
+                                    ls -la frontend/test-results/ 2>/dev/null || true
+                                """
                             }
                             post {
                                 always {
+                                    junit(
+                                        testResults: 'frontend/test-results/junit-frontend.xml',
+                                        allowEmptyResults: true
+                                    )
                                     publishHTML(target: [
                                         allowMissing         : true,
-                                        alwaysLinkToLastBuild: false,
+                                        alwaysLinkToLastBuild: true,
                                         keepAll              : true,
                                         reportDir            : 'frontend/coverage',
                                         reportFiles          : 'index.html',
@@ -267,9 +324,18 @@ pipeline {
                                 --format table \\
                                 --timeout 10m \\
                                 --skip-dirs node_modules/.cache \\
-                                --skip-dirs .git
+                                --skip-dirs .git \\
+                                2>&1 | tee trivy-fs-report.txt
                             echo "✅ Scan Trivy FS terminé"
                         """
+                    }
+                    post {
+                        always {
+                            archiveArtifacts(
+                                artifacts: 'trivy-fs-report.txt',
+                                allowEmptyArchive: true
+                            )
+                        }
                     }
                 }
 
@@ -355,8 +421,34 @@ pipeline {
                                 ${PROJECT_NAME}-frontend:${BUILD_NUMBER}
 
                             echo "✅ Scan images terminé"
-                            echo "=== Images disponibles ==="
+                            echo "=== Images sur Docker host ==="
                             docker images | grep ${PROJECT_NAME}
+                        """
+                    }
+                }
+
+                stage('Chargement Minikube') {
+                    steps {
+                        sh """
+                            echo "=== Chargement images → daemon Docker Minikube ==="
+                            MINIKUBE_DOCKER="docker --tls \\
+                                --tlscacert ${MINIKUBE_CERTS}/ca.pem \\
+                                --tlscert   ${MINIKUBE_CERTS}/cert.pem \\
+                                --tlskey    ${MINIKUBE_CERTS}/key.pem \\
+                                -H ${MINIKUBE_DOCKER_HOST}"
+
+                            echo "  → Backend  :${BUILD_NUMBER}"
+                            docker save ${PROJECT_NAME}-backend:${BUILD_NUMBER} \\
+                                | \${MINIKUBE_DOCKER} load
+                            echo "  ✅ collector-shop-backend:${BUILD_NUMBER} disponible dans Minikube"
+
+                            echo "  → Frontend :${BUILD_NUMBER}"
+                            docker save ${PROJECT_NAME}-frontend:${BUILD_NUMBER} \\
+                                | \${MINIKUBE_DOCKER} load
+                            echo "  ✅ collector-shop-frontend:${BUILD_NUMBER} disponible dans Minikube"
+
+                            echo "=== Images dans Minikube (collector-shop) ==="
+                            \${MINIKUBE_DOCKER} images | grep ${PROJECT_NAME} || true
                         """
                     }
                 }
