@@ -49,48 +49,38 @@ router.get('/shop/:shopId', async (req: Request, res: Response): Promise<void> =
   }
 });
 
+const collectionInclude = {
+  shop: {
+    select: {
+      id: true,
+      name: true,
+      user: { select: { id: true, firstName: true, lastName: true } },
+    },
+  },
+  announcements: {
+    where: { status: 'PUBLISHED' as const },
+    include: {
+      seller: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          shop: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' as const },
+  },
+};
+
 // Get collection details with items
 router.get('/:collectionId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { collectionId } = req.params;
-
     const collection = await prisma.collection.findUnique({
       where: { id: collectionId },
-      include: {
-        shop: {
-          select: {
-            id: true,
-            name: true,
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-        },
-        announcements: {
-          where: { status: 'PUBLISHED' },
-          include: {
-            seller: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                shop: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-              },
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
+      include: collectionInclude,
     });
 
     if (!collection) {

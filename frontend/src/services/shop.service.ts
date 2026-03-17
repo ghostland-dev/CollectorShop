@@ -26,7 +26,7 @@ export const shopService = {
   getById: async (shopId: string): Promise<Shop> => {
     try {
       const response = await apiClient.get<Shop>(`/shops/${shopId}`);
-      return response as any as Shop;
+      return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération de la boutique:', error);
       throw error;
@@ -36,7 +36,7 @@ export const shopService = {
   getByUserId: async (userId: string): Promise<Shop | null> => {
     try {
       const response = await apiClient.get<Shop>(`/shops/user/${userId}`);
-      return response as any as Shop;
+      return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération de la boutique utilisateur:', error);
       return null;
@@ -49,7 +49,7 @@ export const shopService = {
   }): Promise<ShopsResponse> => {
     try {
       const response = await apiClient.get<ShopsResponse>('/shops', { params });
-      return response as any as ShopsResponse;
+      return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération des boutiques:', error);
       throw error;
@@ -59,7 +59,7 @@ export const shopService = {
   update: async (shopId: string, data: Partial<Shop>): Promise<Shop> => {
     try {
       const response = await apiClient.put<Shop>(`/shops/${shopId}`, data);
-      return response as any as Shop;
+      return response.data;
     } catch (error) {
       console.error('Erreur lors de la mise à jour de la boutique:', error);
       throw error;

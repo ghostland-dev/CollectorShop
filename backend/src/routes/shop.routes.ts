@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticate, authorize } from '../utils/auth';
+import { authenticate } from '../utils/auth';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -112,7 +112,7 @@ router.put(
     try {
       const { id } = req.params;
       const { name, description, logo, bannerImage } = req.body;
-      const userId = (req as any).user?.userId;
+      const currentUser = req.user;
 
       // Get the shop to check ownership
       const shop = await prisma.shop.findUnique({
@@ -125,7 +125,7 @@ router.put(
       }
 
       // Check if user is owner or admin
-      if (shop.userId !== userId && (req as any).user?.role !== 'ADMIN') {
+      if (shop.userId !== currentUser?.userId && currentUser?.role !== 'ADMIN') {
         res.status(403).json({ error: 'Unauthorized' });
         return;
       }

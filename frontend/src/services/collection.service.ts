@@ -102,7 +102,7 @@ class CollectionService {
         `/collections/${collectionId}`,
         data
       );
-      return response as any as Collection;
+      return response.data;
     } catch (error) {
       console.error('Error updating collection:', error);
       throw error;
@@ -129,7 +129,7 @@ class CollectionService {
       const response = await apiClient.get<CollectionsResponse>(
         '/collections/seller/my'
       );
-      return (response as any as CollectionsResponse).collections || [];
+      return response.data.collections || [];
     } catch (error) {
       console.error('Error fetching my collections:', error);
       throw error;
