@@ -60,7 +60,7 @@ pipeline {
         MANIFEST_PATH       = 'k8s/overlays/minikube'
 
         // ─── ArgoCD ────────────────────────────────────────────────────────────
-        ARGOCD_SERVER       = 'localhost:30080'   // NodePort ArgoCD (make argocd-install)
+        ARGOCD_SERVER       = '192.168.49.2:31080'   // NodePort ArgoCD
         ARGOCD_APP          = 'collector-shop'
 
         // ─── Minikube ─────────────────────────────────────────────────────────

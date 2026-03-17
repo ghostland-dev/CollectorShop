@@ -79,16 +79,16 @@ spec:
               subPath: stream.conf
             - name: child-config
               mountPath: /etc/netdata/go.d/k8s_state.conf
-              subPath: go.d/k8s_state.conf
+              subPath: k8s_state.conf
             - name: child-config
               mountPath: /etc/netdata/go.d/postgres.conf
-              subPath: go.d/postgres.conf
+              subPath: postgres.conf
             - name: child-config
               mountPath: /etc/netdata/go.d/redis.conf
-              subPath: go.d/redis.conf
+              subPath: redis.conf
             - name: child-config
               mountPath: /etc/netdata/health.d/kubernetes.conf
-              subPath: health.d/kubernetes.conf
+              subPath: kubernetes.conf
             # Filesystem host (métriques node)
             - name: proc
               mountPath: /host/proc

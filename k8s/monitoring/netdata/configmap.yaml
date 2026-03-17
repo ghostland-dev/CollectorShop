@@ -83,27 +83,23 @@ data:
       default port = 19999
       send charts matching = *
 
-  go.d/k8s_state.conf: |
-    # Intégration Kubernetes State — métriques pods/deployments/nodes
+  k8s_state.conf: |
     jobs:
       - name: minikube
         url: http://localhost:19999/api/v1/allmetrics?format=prometheus
 
-  go.d/postgres.conf: |
-    # Intégration PostgreSQL — détectée automatiquement via DNS interne
+  postgres.conf: |
     jobs:
       - name: collector-shop-db
         dsn: "postgresql://collector:collector_password@postgres.collector-shop.svc.cluster.local:5432/collector_shop?connect_timeout=5"
         collect_replication_metrics_interval: 30
 
-  go.d/redis.conf: |
-    # Intégration Redis
+  redis.conf: |
     jobs:
       - name: collector-shop-cache
         address: redis://redis.collector-shop.svc.cluster.local:6379
 
-  health.d/kubernetes.conf: |
-    # Alertes Kubernetes
+  kubernetes.conf: |
     alarm: pod_not_running
     on: k8s_state.pod_status
     lookup: max -1m unaligned foreach *
@@ -111,7 +107,7 @@ data:
     every: 30s
     warn: $this != 1
     crit: $this == 0
-    info: pod n'est pas en cours d'exécution
+    info: pod not running
     to: sysadmin
 
     alarm: high_cpu_usage
@@ -121,5 +117,5 @@ data:
     every: 30s
     warn: $this > 80
     crit: $this > 95
-    info: CPU élevé dans un conteneur
+    info: high CPU in container
     to: sysadmin
