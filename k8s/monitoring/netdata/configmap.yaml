@@ -36,9 +36,15 @@ data:
       access log = /var/log/netdata/access.log
 
   stream.conf: |
-    # Parent : accepte les connexions des children
     [stream]
       enabled = yes
+      default memory mode = ram
+      health enabled by default = auto
+      allow from = *
+
+    [NETDATA-COLLECTOR-SHOP-KEY-2026]
+      enabled = yes
+      default history = 3600
       default memory mode = ram
       health enabled by default = auto
       allow from = *
