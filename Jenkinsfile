@@ -438,24 +438,12 @@ pipeline {
                                     echo "⚠️  Sync HTTP \${HTTP_CODE} — poursuite du polling..."
                                 fi
 
-                                # Créer un parseur Python dans un fichier temporaire
-                                # (dash /bin/sh ne sait pas parser un script multi-ligne
-                                #  dans $(...) à l'intérieur d'un for — syntax error)
-                                ARGOCD_PARSER=\$(mktemp --suffix=.py)
-                                cat > "\${ARGOCD_PARSER}" << 'PYEOF'
-import sys, json
-d = json.load(sys.stdin)
-s = d.get("status") or {}
-sync_st  = (s.get("sync")   or {}).get("status", "?")
-health_st = (s.get("health") or {}).get("status", "?")
-print(sync_st + " " + health_st)
-PYEOF
-
                                 echo "Polling Synced + Healthy (max 5 min)..."
                                 for i in \$(seq 1 30); do
                                     STATUS=\$(curl -sf "\${ARGOCD_URL}/api/v1/applications/${ARGOCD_APP}" \\
                                         -H "Authorization: Bearer \${ARGOCD_AUTH_TOKEN}" 2>/dev/null \\
-                                        | python3 "\${ARGOCD_PARSER}" 2>/dev/null || echo "? ?")
+                                        | python3 -c "import sys,json;s=json.load(sys.stdin).get('status') or dict();sy=s.get('sync') or dict();he=s.get('health') or dict();print(sy.get('status','?')+' '+he.get('status','?'))" \\
+                                        2>/dev/null || echo "? ?")
                                     SYNC_ST=\$(echo "\${STATUS}" | awk '{print \$1}')
                                     HEALTH_ST=\$(echo "\${STATUS}" | awk '{print \$2}')
                                     echo "  [\${i}/30] Sync: \${SYNC_ST}  Health: \${HEALTH_ST}"
@@ -467,7 +455,6 @@ PYEOF
                                     [ \$i -eq 30 ] && echo "⚠️  Timeout ArgoCD — pipeline continue"
                                     sleep 10
                                 done
-                                rm -f "\${ARGOCD_PARSER}"
                             """
                         }
                     }
