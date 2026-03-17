@@ -229,11 +229,13 @@ pipeline {
                                 sh """
                                     echo "=== Tests Backend (coverage + JUnit XML) ==="
                                     mkdir -p backend/test-results
+                                    # JEST_JUNIT_OUTPUT_DIR est relatif au CWD de jest (=backend/)
+                                    # donc "test-results" → backend/test-results/junit-backend.xml
                                     DATABASE_URL=${DATABASE_URL} \\
                                     JWT_SECRET=${JWT_SECRET} \\
                                     JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET} \\
                                     NODE_ENV=test \\
-                                    JEST_JUNIT_OUTPUT_DIR=backend/test-results \\
+                                    JEST_JUNIT_OUTPUT_DIR=test-results \\
                                     JEST_JUNIT_OUTPUT_NAME=junit-backend.xml \\
                                     JEST_JUNIT_CLASSNAME='{classname}' \\
                                     JEST_JUNIT_TITLE='{title}' \\
@@ -269,7 +271,8 @@ pipeline {
                                 sh """
                                     echo "=== Tests Frontend (coverage + JUnit XML) ==="
                                     mkdir -p frontend/test-results
-                                    JEST_JUNIT_OUTPUT_DIR=frontend/test-results \\
+                                    # JEST_JUNIT_OUTPUT_DIR est relatif au CWD de jest (=frontend/)
+                                    JEST_JUNIT_OUTPUT_DIR=test-results \\
                                     JEST_JUNIT_OUTPUT_NAME=junit-frontend.xml \\
                                     JEST_JUNIT_CLASSNAME='{classname}' \\
                                     JEST_JUNIT_TITLE='{title}' \\
