@@ -54,6 +54,9 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy : nécessaire derrière nginx Ingress (X-Forwarded-For pour rate-limit)
+app.set('trust proxy', 1);
+
 // Middleware de sécurité
 app.use(helmet());
 app.use(cors({
