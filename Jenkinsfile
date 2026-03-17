@@ -444,8 +444,8 @@ pipeline {
                                         -H "Authorization: Bearer \${ARGOCD_AUTH_TOKEN}" 2>/dev/null \\
                                         | python3 -c "import sys,json;s=json.load(sys.stdin).get('status') or dict();sy=s.get('sync') or dict();he=s.get('health') or dict();print(sy.get('status','?')+' '+he.get('status','?'))" \\
                                         2>/dev/null || echo "? ?")
-                                    SYNC_ST=\$(echo "\${STATUS}" | awk '{print \$1}')
-                                    HEALTH_ST=\$(echo "\${STATUS}" | awk '{print \$2}')
+                                    SYNC_ST=\$(echo "\${STATUS}" | cut -d' ' -f1)
+                                    HEALTH_ST=\$(echo "\${STATUS}" | cut -d' ' -f2)
                                     echo "  [\${i}/30] Sync: \${SYNC_ST}  Health: \${HEALTH_ST}"
 
                                     if [ "\${SYNC_ST}" = "Synced" ] && [ "\${HEALTH_ST}" = "Healthy" ]; then
