@@ -1,47 +1,77 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Box,
-  Typography,
-  Paper,
-  Button,
-  CircularProgress,
-  Alert,
-  Grid,
-  Chip,
-  Container,
-  IconButton,
+  Box, Typography, Button, CircularProgress, Alert,
+  Grid, Chip, IconButton, Divider, Stack,
 } from '@mui/material';
-import { ShoppingCart, Payment, Edit, Delete } from '@mui/icons-material';
+import {
+  ShoppingCart, Payment, Edit, Delete, ArrowBack,
+  Store, Verified, LocalOffer,
+} from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { announcementService, Announcement } from '../services/announcement.service';
-import { purchaseService } from '../services/purchase.service';
 import { useCartStore } from '../stores/cartStore';
 import { useAuthStore } from '../stores/authStore';
 import { useNotifications } from '../hooks/useNotifications';
 import { ApiError } from '../services/api';
 
-// Helper component for announcement image
 function AnnouncementImage({ announcement }: { announcement: Announcement }) {
   if (announcement.images.length > 0) {
     return (
       <Box
-        component="img"
-        src={announcement.images[0]}
-        alt={announcement.title}
-        sx={{ width: '100%', borderRadius: 2 }}
-      />
+        sx={{
+          position: 'relative',
+          borderRadius: 3,
+          overflow: 'hidden',
+          background: '#0f172a',
+          border: '1px solid rgba(248,250,252,0.08)',
+          minHeight: 400,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Box
+          component="img"
+          src={announcement.images[0]}
+          alt={announcement.title}
+          sx={{
+            maxWidth: '100%',
+            maxHeight: 500,
+            objectFit: 'contain',
+            p: announcement.images[0].includes('pokemontcg') ? 3 : 0,
+            display: 'block',
+          }}
+        />
+        {announcement.status === 'SOLD' && (
+          <Box
+            sx={{
+              position: 'absolute', inset: 0,
+              bgcolor: 'rgba(0,0,0,0.7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: 'Rajdhani, sans-serif', fontWeight: 700,
+                fontSize: '2.5rem', color: '#ef4444',
+                border: '4px solid #ef4444', px: 3, py: 1, borderRadius: 2,
+                transform: 'rotate(-15deg)', letterSpacing: '0.1em',
+              }}
+            >
+              VENDU
+            </Typography>
+          </Box>
+        )}
+      </Box>
     );
   }
   return (
     <Box
       sx={{
-        width: '100%',
-        height: 400,
-        bgcolor: 'grey.200',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 2,
+        height: 400, borderRadius: 3,
+        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        border: '1px solid rgba(248,250,252,0.08)',
       }}
     >
       <Typography color="text.secondary">Pas d'image</Typography>
@@ -49,156 +79,11 @@ function AnnouncementImage({ announcement }: { announcement: Announcement }) {
   );
 }
 
-// Helper component for purchase buttons
-function PurchaseButtons({ canPurchase, onAddToCart, onBuyNow, isPending }: {
-  canPurchase: boolean;
-  onAddToCart: () => void;
-  onBuyNow: () => void;
-  isPending: boolean;
-}) {
-  if (!canPurchase) return null;
-  return (
-    <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-      <Button
-        variant="outlined"
-        size="large"
-        startIcon={<ShoppingCart />}
-        onClick={onAddToCart}
-        sx={{ flex: 1 }}
-      >
-        Ajouter au panier
-      </Button>
-      <Button
-        variant="contained"
-        size="large"
-        startIcon={<Payment />}
-        onClick={onBuyNow}
-        disabled={isPending}
-        sx={{ flex: 1 }}
-      >
-        {isPending ? 'Traitement...' : 'Acheter maintenant'}
-      </Button>
-    </Box>
-  );
-}
-
-// Helper component for announcement info
-function AnnouncementInfo({ announcement, canPurchase, onAddToCart, onBuyNow, isPending }: {
-  announcement: Announcement;
-  canPurchase: boolean;
-  onAddToCart: () => void;
-  onBuyNow: () => void;
-  isPending: boolean;
-}) {
-  return (
-    <>
-      <Typography variant="h4" component="h1" gutterBottom>
-        {announcement.title}
-      </Typography>
-      {announcement.category && (
-        <Chip label={announcement.category} sx={{ mb: 2 }} />
-      )}
-      <Typography variant="h5" color="primary" sx={{ mb: 2 }}>
-        {announcement.price.toFixed(2)} €
-      </Typography>
-      <Typography variant="body1" paragraph>
-        {announcement.description}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Statut: {announcement.status}
-      </Typography>
-      {announcement.seller && (
-        <Paper sx={{ p: 2, mb: 3, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            🏪 Boutique
-          </Typography>
-          {announcement.seller.shop ? (
-            <>
-              <Typography variant="h6">
-                {announcement.seller.shop.name}
-              </Typography>
-              {announcement.seller.shop.description && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  {announcement.seller.shop.description}
-                </Typography>
-              )}
-              <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
-                Vendeur: {announcement.seller.firstName} {announcement.seller.lastName}
-              </Typography>
-            </>
-          ) : (
-            <Typography variant="body2">
-              {announcement.seller.firstName} {announcement.seller.lastName} ({announcement.seller.email})
-            </Typography>
-          )}
-        </Paper>
-      )}
-      <PurchaseButtons
-        canPurchase={canPurchase}
-        onAddToCart={onAddToCart}
-        onBuyNow={onBuyNow}
-        isPending={isPending}
-      />
-    </>
-  );
-}
-
-// Helper function to extract error message
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     return error.data?.error || error.data?.message || error.message;
   }
   return error instanceof Error ? error.message : 'Erreur inconnue';
-}
-
-// Helper component for management actions
-function ManagementActions({ canManage, isAdmin, announcementStatus, onEdit, onDelete, isDeleting }: {
-  canManage: boolean;
-  isAdmin: boolean;
-  announcementStatus: string;
-  onEdit: () => void;
-  onDelete: () => void;
-  isDeleting: boolean;
-}) {
-  if (!canManage) return null;
-  return (
-    <Box>
-      <IconButton
-        color="primary"
-        onClick={onEdit}
-        disabled={announcementStatus === 'SOLD' && !isAdmin}
-        title={isAdmin ? 'Modifier (Admin)' : 'Modifier'}
-      >
-        <Edit />
-      </IconButton>
-      <IconButton
-        color="error"
-        onClick={onDelete}
-        disabled={isDeleting}
-        title={isAdmin ? 'Supprimer (Admin)' : 'Supprimer'}
-      >
-        <Delete />
-      </IconButton>
-    </Box>
-  );
-}
-
-// Helper component for announcement alerts
-function AnnouncementAlerts({ status, isAuthenticated }: { status: string; isAuthenticated: boolean }) {
-  return (
-    <>
-      {status === 'SOLD' && (
-        <Alert severity="warning" sx={{ mt: 2 }}>
-          Cet article a déjà été vendu
-        </Alert>
-      )}
-      {!isAuthenticated && (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          Connectez-vous pour ajouter cet article au panier ou l'acheter
-        </Alert>
-      )}
-    </>
-  );
 }
 
 export function AnnouncementDetailPage() {
@@ -218,17 +103,6 @@ export function AnnouncementDetailPage() {
 
   const isOwner = announcement?.sellerId === user?.id;
   const canManage = isAdmin || isOwner;
-
-  const purchaseMutation = useMutation({
-    mutationFn: () => purchaseService.create({ announcementId: id! }),
-    onSuccess: () => {
-      showSuccess('Achat créé avec succès !');
-      navigate('/my-purchases');
-    },
-    onError: (error: unknown) => {
-      showError(getErrorMessage(error) || 'Erreur lors de l\'achat');
-    },
-  });
 
   const deleteMutation = useMutation({
     mutationFn: () => announcementService.delete(id!),
@@ -250,18 +124,41 @@ export function AnnouncementDetailPage() {
       title: announcement.title,
       price: announcement.price,
       image: announcement.images[0],
-      sellerName: announcement.seller ? `${announcement.seller.firstName} ${announcement.seller.lastName}` : undefined,
+      sellerName: announcement.seller
+        ? `${announcement.seller.firstName} ${announcement.seller.lastName}`
+        : undefined,
     });
     showSuccess('Article ajouté au panier !');
   };
 
+  // "Acheter maintenant" = add to cart + navigate to checkout (consistent flow)
   const handleBuyNow = () => {
-    if (!isAuthenticated || (user?.role !== 'BUYER' && user?.role !== 'SELLER' && user?.role !== 'ADMIN')) {
-      showError('Vous devez être connecté pour effectuer un achat');
+    if (!isAuthenticated) {
+      showError('Connectez-vous pour effectuer un achat');
       navigate('/login');
       return;
     }
-    purchaseMutation.mutate();
+    if (!announcement) return;
+    addItem({
+      announcementId: announcement.id,
+      title: announcement.title,
+      price: announcement.price,
+      image: announcement.images[0],
+      sellerName: announcement.seller
+        ? `${announcement.seller.firstName} ${announcement.seller.lastName}`
+        : undefined,
+    });
+    navigate('/checkout', {
+      state: {
+        items: [{
+          announcementId: announcement.id,
+          title: announcement.title,
+          price: announcement.price,
+          image: announcement.images[0],
+        }],
+        total: announcement.price,
+      },
+    });
   };
 
   const handleDelete = () => {
@@ -270,12 +167,15 @@ export function AnnouncementDetailPage() {
     }
   };
 
-  const canPurchase = isAuthenticated && (user?.role === 'BUYER' || user?.role === 'SELLER' || user?.role === 'ADMIN') && announcement?.status === 'PUBLISHED';
+  const canPurchase =
+    isAuthenticated &&
+    announcement?.status === 'PUBLISHED' &&
+    !isOwner;
 
   if (isLoading) {
     return (
-      <Box display="flex" justifyContent="center" p={4}>
-        <CircularProgress />
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+        <CircularProgress sx={{ color: 'primary.main' }} />
       </Box>
     );
   }
@@ -283,43 +183,181 @@ export function AnnouncementDetailPage() {
   if (error || !announcement) {
     return (
       <Alert severity="error" sx={{ m: 2 }}>
-        Annonce introuvable
+        Annonce introuvable ou inaccessible
       </Alert>
     );
   }
 
   return (
-    <Container maxWidth="lg">
-      <Paper sx={{ p: 4, mt: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Button onClick={() => navigate(-1)}>
-            ← Retour
-          </Button>
-          <ManagementActions
-            canManage={canManage}
-            isAdmin={isAdmin}
-            announcementStatus={announcement.status}
-            onEdit={() => navigate(`/announcements/${id}/edit`)}
-            onDelete={handleDelete}
-            isDeleting={deleteMutation.isPending}
-          />
-        </Box>
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={6}>
-            <AnnouncementImage announcement={announcement} />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <AnnouncementInfo
-              announcement={announcement}
-              canPurchase={canPurchase}
-              onAddToCart={handleAddToCart}
-              onBuyNow={handleBuyNow}
-              isPending={purchaseMutation.isPending}
-            />
-            <AnnouncementAlerts status={announcement.status} isAuthenticated={isAuthenticated} />
-          </Grid>
+    <Box maxWidth="lg" mx="auto">
+      {/* Top bar */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Button
+          startIcon={<ArrowBack />}
+          onClick={() => navigate(-1)}
+          sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+        >
+          Retour
+        </Button>
+        {canManage && (
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <IconButton
+              color="primary"
+              onClick={() => navigate(`/announcements/${id}/edit`)}
+              disabled={announcement.status === 'SOLD' && !isAdmin}
+              title="Modifier"
+              sx={{ border: '1px solid rgba(245,158,11,0.3)', '&:hover': { bgcolor: 'rgba(245,158,11,0.08)' } }}
+            >
+              <Edit fontSize="small" />
+            </IconButton>
+            <IconButton
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              title="Supprimer"
+              sx={{ border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', '&:hover': { bgcolor: 'rgba(239,68,68,0.08)' } }}
+            >
+              <Delete fontSize="small" />
+            </IconButton>
+          </Box>
+        )}
+      </Box>
+
+      <Grid container spacing={4}>
+        {/* Image */}
+        <Grid item xs={12} md={6}>
+          <AnnouncementImage announcement={announcement} />
         </Grid>
-      </Paper>
-    </Container>
+
+        {/* Info */}
+        <Grid item xs={12} md={6}>
+          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            {/* Category + status */}
+            <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap">
+              {announcement.category && (
+                <Chip
+                  label={announcement.category}
+                  size="small"
+                  icon={<LocalOffer sx={{ fontSize: '0.75rem !important', color: '#f59e0b !important' }} />}
+                  sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}
+                />
+              )}
+              {announcement.status === 'PUBLISHED' && (
+                <Chip
+                  label="Disponible"
+                  size="small"
+                  icon={<Verified sx={{ fontSize: '0.75rem !important', color: '#10b981 !important' }} />}
+                  sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.25)' }}
+                />
+              )}
+            </Stack>
+
+            {/* Title */}
+            <Typography
+              variant="h4"
+              component="h1"
+              fontWeight={700}
+              sx={{ mb: 1, fontFamily: 'Rajdhani, sans-serif', lineHeight: 1.2 }}
+            >
+              {announcement.title}
+            </Typography>
+
+            {/* Price */}
+            <Typography
+              variant="h3"
+              sx={{
+                fontFamily: 'Rajdhani, sans-serif',
+                fontWeight: 700,
+                color: announcement.status === 'SOLD' ? '#64748b' : '#f59e0b',
+                mb: 3, lineHeight: 1,
+              }}
+            >
+              {announcement.price.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+            </Typography>
+
+            {/* Description */}
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3, lineHeight: 1.8 }}>
+              {announcement.description}
+            </Typography>
+
+            <Divider sx={{ mb: 3 }} />
+
+            {/* Seller info */}
+            {announcement.seller && (
+              <Box
+                sx={{
+                  p: 2.5, borderRadius: 2, mb: 3,
+                  bgcolor: 'rgba(245,158,11,0.05)',
+                  border: '1px solid rgba(245,158,11,0.15)',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Store sx={{ color: '#f59e0b', fontSize: '1.1rem' }} />
+                  <Typography variant="subtitle2" fontWeight={700} color="primary.main">
+                    {announcement.seller.shop?.name || `${announcement.seller.firstName} ${announcement.seller.lastName}`}
+                  </Typography>
+                </Box>
+                {announcement.seller.shop?.description && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {announcement.seller.shop.description}
+                  </Typography>
+                )}
+                <Typography variant="caption" color="text.secondary">
+                  Vendeur : {announcement.seller.firstName} {announcement.seller.lastName}
+                </Typography>
+              </Box>
+            )}
+
+            {/* Purchase buttons */}
+            {canPurchase && (
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  startIcon={<ShoppingCart />}
+                  onClick={handleAddToCart}
+                  sx={{ flex: 1, py: 1.5 }}
+                >
+                  Ajouter au panier
+                </Button>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<Payment />}
+                  onClick={handleBuyNow}
+                  sx={{ flex: 1, py: 1.5 }}
+                >
+                  Acheter maintenant
+                </Button>
+              </Stack>
+            )}
+
+            {/* Alerts */}
+            {announcement.status === 'SOLD' && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                Cet article a déjà été vendu
+              </Alert>
+            )}
+            {!isAuthenticated && (
+              <Alert
+                severity="info"
+                sx={{ mt: 2 }}
+                action={
+                  <Button color="inherit" size="small" onClick={() => navigate('/login')}>
+                    Connexion
+                  </Button>
+                }
+              >
+                Connectez-vous pour acheter cette carte
+              </Alert>
+            )}
+            {isOwner && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Vous êtes le vendeur de cette annonce
+              </Alert>
+            )}
+          </Box>
+        </Grid>
+      </Grid>
+    </Box>
   );
 }

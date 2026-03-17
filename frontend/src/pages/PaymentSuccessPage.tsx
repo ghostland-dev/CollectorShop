@@ -1,83 +1,121 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Box,
-  Typography,
-  Paper,
-  Button,
-  Container,
-  Alert,
-} from '@mui/material';
+import { Box, Typography, Button, Stack, LinearProgress } from '@mui/material';
 import { CheckCircle, ShoppingBag, Home, Receipt } from '@mui/icons-material';
+import { useCartStore } from '../stores/cartStore';
+
+const REDIRECT_DELAY = 10;
+
 export function PaymentSuccessPage() {
   const navigate = useNavigate();
+  const { clearCart } = useCartStore();
+  const [countdown, setCountdown] = useState(REDIRECT_DELAY);
 
   useEffect(() => {
-    // Rediriger après 10 secondes si l'utilisateur ne fait rien
-    const timer = setTimeout(() => {
-      navigate('/catalog');
-    }, 10000);
+    clearCart();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    return () => clearTimeout(timer);
-  }, [navigate]);
+  useEffect(() => {
+    if (countdown <= 0) {
+      navigate('/catalog');
+      return;
+    }
+    const interval = setInterval(() => setCountdown((c) => c - 1), 1000);
+    return () => clearInterval(interval);
+  }, [countdown, navigate]);
 
   return (
-    <Container maxWidth="md" sx={{ py: 8 }}>
-      <Paper sx={{ p: 6, textAlign: 'center' }} role="alert" aria-live="polite">
-        <CheckCircle sx={{ fontSize: 80, color: 'success.main', mb: 3 }} aria-hidden="true" />
-        
-        <Typography variant="h3" component="h1" gutterBottom fontWeight="bold" id="success-title">
+    <Box
+      sx={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '70vh',
+      }}
+      role="alert"
+      aria-live="polite"
+    >
+      <Box
+        sx={{
+          maxWidth: 520, width: '100%', textAlign: 'center',
+          p: { xs: 4, md: 6 },
+          bgcolor: 'rgba(16,185,129,0.05)',
+          border: '1px solid rgba(16,185,129,0.2)',
+          borderRadius: 4,
+        }}
+      >
+        {/* Success icon */}
+        <Box
+          sx={{
+            width: 96, height: 96, borderRadius: '50%', mx: 'auto', mb: 3,
+            background: 'radial-gradient(circle, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.05) 100%)',
+            border: '2px solid rgba(16,185,129,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <CheckCircle sx={{ fontSize: 52, color: '#10b981' }} />
+        </Box>
+
+        <Typography
+          variant="h3"
+          fontWeight={700}
+          sx={{ fontFamily: 'Rajdhani, sans-serif', mb: 1, color: '#10b981' }}
+        >
           Paiement réussi !
         </Typography>
-        
-        <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }} aria-describedby="success-title">
-          Votre commande a été traitée avec succès
+
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
+          Votre commande a été traitée avec succès.
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 4, opacity: 0.7 }}>
+          Vous recevrez une confirmation sous peu.
         </Typography>
 
-        <Alert severity="success" sx={{ mb: 4, textAlign: 'left' }}>
-          <Typography variant="body1" gutterBottom>
-            <strong>Merci pour votre achat !</strong>
+        {/* Countdown */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+            Redirection automatique dans {countdown}s…
           </Typography>
-          <Typography variant="body2">
-            Vous recevrez un email de confirmation sous peu. Votre commande est en cours de traitement.
-          </Typography>
-        </Alert>
+          <LinearProgress
+            variant="determinate"
+            value={(1 - countdown / REDIRECT_DELAY) * 100}
+            sx={{
+              height: 4, borderRadius: 2,
+              bgcolor: 'rgba(16,185,129,0.1)',
+              '& .MuiLinearProgress-bar': { bgcolor: '#10b981', borderRadius: 2 },
+            }}
+          />
+        </Box>
 
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={<ShoppingBag />}
-            onClick={() => navigate('/catalog')}
-            aria-label="Continuer vos achats"
-          >
-            Continuer vos achats
-          </Button>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
           <Button
             variant="contained"
             size="large"
             startIcon={<Receipt />}
             onClick={() => navigate('/my-purchases')}
-            aria-label="Voir mes achats"
+            sx={{ py: 1.5, px: 3 }}
           >
-            Voir mes achats
+            Mes achats
           </Button>
           <Button
             variant="outlined"
             size="large"
+            startIcon={<ShoppingBag />}
+            onClick={() => navigate('/catalog')}
+            sx={{ py: 1.5, px: 3 }}
+          >
+            Continuer
+          </Button>
+          <Button
+            variant="text"
+            size="large"
             startIcon={<Home />}
             onClick={() => navigate('/')}
-            aria-label="Retour à l'accueil"
+            sx={{ py: 1.5, color: 'text.secondary' }}
           >
-            Retour à l'accueil
+            Accueil
           </Button>
-        </Box>
-
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 4, display: 'block' }}>
-          Vous serez redirigé automatiquement dans quelques secondes...
-        </Typography>
-      </Paper>
-    </Container>
+        </Stack>
+      </Box>
+    </Box>
   );
 }
-
