@@ -64,6 +64,34 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 1
+  # Dev utilise ClusterIP (accès via Ingress uniquement) — évite conflit NodePort
+  - target:
+      kind: Service
+      name: backend
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: ClusterIP
+      - op: remove
+        path: /spec/ports/0/nodePort
+  - target:
+      kind: Service
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: ClusterIP
+      - op: remove
+        path: /spec/ports/0/nodePort
+  - target:
+      kind: Service
+      name: grafana
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: ClusterIP
+      - op: remove
+        path: /spec/ports/0/nodePort
   - target:
       kind: Ingress
       name: collector-shop-ingress
