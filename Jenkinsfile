@@ -58,8 +58,8 @@ pipeline {
         ARGOCD_APP          = 'collector-shop'
 
         // ─── Minikube ─────────────────────────────────────────────────────────
-        MINIKUBE_BACKEND_URL  = 'http://192.168.49.2:31000'
-        MINIKUBE_FRONTEND_URL = 'http://192.168.49.2:31001'
+        MINIKUBE_BACKEND_URL  = 'https://api.shopcollector.local'
+        MINIKUBE_FRONTEND_URL = 'https://shopcollector.local'
         // Docker daemon interne Minikube (TLS) — pour charger les images built
         MINIKUBE_DOCKER_HOST  = 'tcp://192.168.49.2:2376'
         MINIKUBE_CERTS        = '/home/ismail/.minikube/certs'
@@ -701,13 +701,18 @@ except Exception as e:
                     emoji: '✅',
                     title: "Pipeline CI/CD — BUILD #${BUILD_NUMBER} RÉUSSI",
                     fields: [
-                        [name: 'Branche',   value: "${GIT_BRANCH}",  inline: true],
-                        [name: 'Commit',    value: commitSha,         inline: true],
-                        [name: 'Durée',     value: duration,          inline: true],
-                        [name: 'Message',   value: commitMsg,         inline: false],
-                        [name: 'ArgoCD',    value: "http://argocd.shopcollector.local:31080/applications/${ARGOCD_APP}", inline: false],
-                        [name: 'Backend',   value: "${MINIKUBE_BACKEND_URL}", inline: true],
-                        [name: 'Frontend',  value: "${MINIKUBE_FRONTEND_URL}", inline: true],
+                        [name: '🌿 Branche',    value: "${GIT_BRANCH}",   inline: true],
+                        [name: '🔖 Commit',     value: commitSha,          inline: true],
+                        [name: '⏱️ Durée',      value: duration,           inline: true],
+                        [name: '💬 Message',    value: commitMsg,          inline: false],
+                        [name: '🌐 Application',  value: "[shopcollector.local](https://shopcollector.local)", inline: true],
+                        [name: '🔧 API Backend',  value: "[api.shopcollector.local](https://api.shopcollector.local/health)", inline: true],
+                        [name: '🚀 ArgoCD',       value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
+                        [name: '📊 Grafana',      value: "[grafana.shopcollector.local](https://grafana.shopcollector.local)", inline: true],
+                        [name: '📡 Netdata',      value: "[netdata.shopcollector.local](https://netdata.shopcollector.local)", inline: true],
+                        [name: '🐙 Gitea',        value: "[gitea.shopcollector.local](https://gitea.shopcollector.local)", inline: true],
+                        [name: '🔍 SonarCloud',   value: "[sonarcloud.io](https://sonarcloud.io/project/overview?id=goodfood-apps_collector-shop)", inline: true],
+                        [name: '🏗️ Jenkins',      value: "[Build #${BUILD_NUMBER}](${BUILD_URL})", inline: true],
                     ]
                 )
             }
@@ -717,16 +722,20 @@ except Exception as e:
             script {
                 def duration = currentBuild.durationString.replace(' and counting', '')
                 def commitSha = sh(script: 'git rev-parse --short HEAD 2>/dev/null || echo "N/A"', returnStdout: true).trim()
+                def commitMsg = sh(script: 'git log -1 --pretty=%s 2>/dev/null || echo "N/A"', returnStdout: true).trim()
                 discordNotify(
                     status: 'FAILURE',
                     color: 15158332,     // rouge
                     emoji: '❌',
                     title: "Pipeline CI/CD — BUILD #${BUILD_NUMBER} ÉCHOUÉ",
                     fields: [
-                        [name: 'Branche',  value: "${GIT_BRANCH}", inline: true],
-                        [name: 'Commit',   value: commitSha,        inline: true],
-                        [name: 'Durée',    value: duration,         inline: true],
-                        [name: 'Logs',     value: "${BUILD_URL}console", inline: false],
+                        [name: '🌿 Branche',   value: "${GIT_BRANCH}", inline: true],
+                        [name: '🔖 Commit',    value: commitSha,        inline: true],
+                        [name: '⏱️ Durée',     value: duration,         inline: true],
+                        [name: '💬 Message',   value: commitMsg,        inline: false],
+                        [name: '📋 Logs Jenkins',  value: "[Voir les logs](${BUILD_URL}console)", inline: true],
+                        [name: '🚀 ArgoCD',        value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
+                        [name: '🌐 Application',   value: "[shopcollector.local](https://shopcollector.local)", inline: true],
                     ]
                 )
             }
@@ -735,15 +744,20 @@ except Exception as e:
         unstable {
             script {
                 def duration = currentBuild.durationString.replace(' and counting', '')
+                def commitSha = sh(script: 'git rev-parse --short HEAD 2>/dev/null || echo "N/A"', returnStdout: true).trim()
                 discordNotify(
                     status: 'UNSTABLE',
                     color: 16776960,     // jaune
                     emoji: '⚠️',
                     title: "Pipeline CI/CD — BUILD #${BUILD_NUMBER} INSTABLE",
                     fields: [
-                        [name: 'Branche',  value: "${GIT_BRANCH}", inline: true],
-                        [name: 'Durée',    value: duration,         inline: true],
-                        [name: 'Logs',     value: "${BUILD_URL}console", inline: false],
+                        [name: '🌿 Branche',  value: "${GIT_BRANCH}", inline: true],
+                        [name: '🔖 Commit',   value: commitSha,        inline: true],
+                        [name: '⏱️ Durée',    value: duration,         inline: true],
+                        [name: '📋 Logs Jenkins',  value: "[Voir les logs](${BUILD_URL}console)", inline: true],
+                        [name: '🚀 ArgoCD',        value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
+                        [name: '🌐 Application',   value: "[shopcollector.local](https://shopcollector.local)", inline: true],
+                        [name: '📊 Grafana',       value: "[grafana.shopcollector.local](https://grafana.shopcollector.local)", inline: true],
                     ]
                 )
             }
