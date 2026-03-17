@@ -15,7 +15,7 @@ spec:
   project: collector-shop
   source:
     repoURL: "http://gitea.gitea.svc.cluster.local:3000/gitea-admin/collector-shop.git"
-    targetRevision: main
+    targetRevision: develop
     path: k8s/overlays/dev
   destination:
     server: https://kubernetes.default.svc
@@ -55,7 +55,7 @@ spec:
   project: collector-shop
   source:
     repoURL: "http://gitea.gitea.svc.cluster.local:3000/gitea-admin/collector-shop.git"
-    targetRevision: main
+    targetRevision: staging
     path: k8s/overlays/staging
   destination:
     server: https://kubernetes.default.svc

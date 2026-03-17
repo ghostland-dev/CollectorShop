@@ -49,18 +49,10 @@ pipeline {
         JWT_SECRET          = 'jenkins-ci-test-secret-32chars!!'
         JWT_REFRESH_SECRET  = 'jenkins-ci-refresh-secret-32chars'
 
-        // ─── GitOps ───────────────────────────────────────────────────────────
-        GIT_BRANCH          = 'main'
-        MANIFEST_PATH       = 'k8s/overlays/minikube'
-
         // ─── ArgoCD (REST API — évite les problèmes d'auth CLI v3) ───────────
         ARGOCD_SERVER       = '192.168.49.2:31080'
-        ARGOCD_APP          = 'collector-shop-production'
 
         // ─── Minikube ─────────────────────────────────────────────────────────
-        MINIKUBE_BACKEND_URL  = 'https://api.shopcollector.local'
-        MINIKUBE_FRONTEND_URL = 'https://shopcollector.local'
-        // Docker daemon interne Minikube (TLS) — pour charger les images built
         MINIKUBE_DOCKER_HOST  = 'tcp://192.168.49.2:2376'
         MINIKUBE_CERTS        = '/home/ismail/.minikube/certs'
 
@@ -72,6 +64,43 @@ pipeline {
     }
 
     stages {
+
+        // ═════════════════════════════════════════════════════════════════════
+        stage('Environnement (branche → env)') {
+        // ═════════════════════════════════════════════════════════════════════
+        //  Détermine MANIFEST_PATH, ARGOCD_APP, et URLs selon la branche :
+        //    main     → production  (k8s/overlays/minikube)
+        //    staging  → staging     (k8s/overlays/staging)
+        //    develop  → dev         (k8s/overlays/dev)
+            steps {
+                script {
+                    def branch = (env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'main').replaceAll('origin/', '')
+                    switch (branch) {
+                        case 'staging':
+                            env.MANIFEST_PATH       = 'k8s/overlays/staging'
+                            env.ARGOCD_APP          = 'collector-shop-staging'
+                            env.GIT_DEPLOY_BRANCH   = 'staging'
+                            env.MINIKUBE_BACKEND_URL  = 'https://api-staging.shopcollector.local'
+                            env.MINIKUBE_FRONTEND_URL = 'https://staging.shopcollector.local'
+                            break
+                        case 'develop':
+                            env.MANIFEST_PATH       = 'k8s/overlays/dev'
+                            env.ARGOCD_APP          = 'collector-shop-dev'
+                            env.GIT_DEPLOY_BRANCH   = 'develop'
+                            env.MINIKUBE_BACKEND_URL  = 'https://api-dev.shopcollector.local'
+                            env.MINIKUBE_FRONTEND_URL = 'https://dev.shopcollector.local'
+                            break
+                        default: // main → production
+                            env.MANIFEST_PATH       = 'k8s/overlays/minikube'
+                            env.ARGOCD_APP          = 'collector-shop-production'
+                            env.GIT_DEPLOY_BRANCH   = 'main'
+                            env.MINIKUBE_BACKEND_URL  = 'https://api.shopcollector.local'
+                            env.MINIKUBE_FRONTEND_URL = 'https://shopcollector.local'
+                    }
+                    echo "Branch: ${branch} → App: ${env.ARGOCD_APP} | Path: ${env.MANIFEST_PATH}"
+                }
+            }
+        }
 
         // ═════════════════════════════════════════════════════════════════════
         stage('Checkout & Installation') {
@@ -500,9 +529,9 @@ pipeline {
                                 if git diff --cached --quiet; then
                                     echo "ℹ️  Pas de changement de manifest (même tag)"
                                 else
-                                    git commit -m "ci: deploy build ${BUILD_NUMBER} [skip ci]"
-                                    git push origin HEAD:${GIT_BRANCH}
-                                    echo "✅ Manifests poussés → Gitea"
+                                    git commit -m "ci: deploy build ${BUILD_NUMBER} [${ARGOCD_APP}] [skip ci]"
+                                    git push origin HEAD:${GIT_DEPLOY_BRANCH}
+                                    echo "✅ Manifests poussés → Gitea (branche: ${GIT_DEPLOY_BRANCH})"
                                 fi
 
                                 rm -rf "\${TMPDIR}"
@@ -701,12 +730,12 @@ except Exception as e:
                     emoji: '✅',
                     title: "Pipeline CI/CD — BUILD #${BUILD_NUMBER} RÉUSSI",
                     fields: [
-                        [name: '🌿 Branche',    value: "${GIT_BRANCH}",   inline: true],
-                        [name: '🔖 Commit',     value: commitSha,          inline: true],
-                        [name: '⏱️ Durée',      value: duration,           inline: true],
-                        [name: '💬 Message',    value: commitMsg,          inline: false],
-                        [name: '🌐 Application',  value: "[shopcollector.local](https://shopcollector.local)", inline: true],
-                        [name: '🔧 API Backend',  value: "[api.shopcollector.local](https://api.shopcollector.local/health)", inline: true],
+                        [name: '🌿 Branche',    value: "${GIT_DEPLOY_BRANCH}",  inline: true],
+                        [name: '🔖 Commit',     value: commitSha,               inline: true],
+                        [name: '⏱️ Durée',      value: duration,                inline: true],
+                        [name: '💬 Message',    value: commitMsg,               inline: false],
+                        [name: '🌐 Application',  value: "[${MINIKUBE_FRONTEND_URL}](${MINIKUBE_FRONTEND_URL})", inline: true],
+                        [name: '🔧 API Backend',  value: "[${MINIKUBE_BACKEND_URL}/health](${MINIKUBE_BACKEND_URL}/health)", inline: true],
                         [name: '🚀 ArgoCD',       value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
                         [name: '📊 Grafana',      value: "[grafana.shopcollector.local](https://grafana.shopcollector.local)", inline: true],
                         [name: '📡 Netdata',      value: "[netdata.shopcollector.local](https://netdata.shopcollector.local)", inline: true],
@@ -729,13 +758,13 @@ except Exception as e:
                     emoji: '❌',
                     title: "Pipeline CI/CD — BUILD #${BUILD_NUMBER} ÉCHOUÉ",
                     fields: [
-                        [name: '🌿 Branche',   value: "${GIT_BRANCH}", inline: true],
-                        [name: '🔖 Commit',    value: commitSha,        inline: true],
-                        [name: '⏱️ Durée',     value: duration,         inline: true],
-                        [name: '💬 Message',   value: commitMsg,        inline: false],
+                        [name: '🌿 Branche',   value: "${GIT_DEPLOY_BRANCH}", inline: true],
+                        [name: '🔖 Commit',    value: commitSha,              inline: true],
+                        [name: '⏱️ Durée',     value: duration,               inline: true],
+                        [name: '💬 Message',   value: commitMsg,              inline: false],
                         [name: '📋 Logs Jenkins',  value: "[Voir les logs](${BUILD_URL}console)", inline: true],
                         [name: '🚀 ArgoCD',        value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
-                        [name: '🌐 Application',   value: "[shopcollector.local](https://shopcollector.local)", inline: true],
+                        [name: '🌐 Application',   value: "[${MINIKUBE_FRONTEND_URL}](${MINIKUBE_FRONTEND_URL})", inline: true],
                     ]
                 )
             }
@@ -751,7 +780,7 @@ except Exception as e:
                     emoji: '⚠️',
                     title: "Pipeline CI/CD — BUILD #${BUILD_NUMBER} INSTABLE",
                     fields: [
-                        [name: '🌿 Branche',  value: "${GIT_BRANCH}", inline: true],
+                        [name: '🌿 Branche',  value: "${GIT_DEPLOY_BRANCH}", inline: true],
                         [name: '🔖 Commit',   value: commitSha,        inline: true],
                         [name: '⏱️ Durée',    value: duration,         inline: true],
                         [name: '📋 Logs Jenkins',  value: "[Voir les logs](${BUILD_URL}console)", inline: true],
