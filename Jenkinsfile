@@ -374,15 +374,15 @@ pipeline {
                     sh """
                         echo "=== Synchronisation ArgoCD ==="
 
-                        # Login ArgoCD via token
+                        # Login ArgoCD via token (--plaintext pour connexion HTTP non-TLS)
                         argocd login ${ARGOCD_SERVER} \\
                             --auth-token \${ARGOCD_AUTH_TOKEN} \\
-                            --insecure \\
+                            --plaintext \\
                             --grpc-web
 
                         # Déclencher la synchronisation
                         argocd app sync ${ARGOCD_APP} \\
-                            --insecure \\
+                            --plaintext \\
                             --grpc-web \\
                             --async
 
@@ -390,14 +390,14 @@ pipeline {
 
                         # Attendre que l'application soit synchronisée et en bonne santé
                         argocd app wait ${ARGOCD_APP} \\
-                            --insecure \\
+                            --plaintext \\
                             --grpc-web \\
                             --health \\
                             --sync \\
                             --timeout 300
 
                         echo "=== Statut de l'application ==="
-                        argocd app get ${ARGOCD_APP} --insecure --grpc-web
+                        argocd app get ${ARGOCD_APP} --plaintext --grpc-web
 
                         echo "✅ Déploiement ArgoCD terminé"
                     """
