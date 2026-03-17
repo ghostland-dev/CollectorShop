@@ -18,9 +18,8 @@ services:
       dockerfile: Dockerfile
     container_name: collector-shop-jenkins
     user: root  # Nécessaire pour accéder au socket Docker
-    ports:
-      - "8080:8080"    # Interface Web Jenkins
-      - "50000:50000"  # Port de communication agents Jenkins
+    # network_mode: host — les ports sont directement sur le host, pas de mapping nécessaire
+    # Port 8080 (Jenkins UI) et 50000 (agents) accessibles sur localhost directement
     volumes:
       # Persistance des données Jenkins (jobs, plugins, config, builds)
       - jenkins_home:/var/jenkins_home
@@ -33,6 +32,8 @@ services:
       # Note: gitconfig est intégré directement dans l'image (Dockerfile)
       # Kubeconfig Minikube (pour kubectl + argocd depuis Jenkins)
       - /home/ismail/.kube:/root/.kube:ro
+      # Certificats Minikube (référencés par le kubeconfig)
+      - /home/ismail/.minikube:/home/ismail/.minikube:ro
       # Binaire minikube (pour minikube image load)
       - /usr/local/bin/minikube:/usr/local/bin/minikube:ro
     environment:
@@ -40,8 +41,7 @@ services:
       - CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs
       # Variables transmises au pipeline pour les scans
       - DOCKER_HOST=unix:///var/run/docker.sock
-    networks:
-      - jenkins-ci-net
+    network_mode: host
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
@@ -51,8 +51,8 @@ services:
       start_period: 120s  # Jenkins met ~2min à démarrer la première fois
 
 networks:
-  # Réseau partagé entre Jenkins et les conteneurs de test
-  # (ex: PostgreSQL éphémère démarré pendant le pipeline)
+  # Réseau pour les conteneurs de test (PostgreSQL éphémère)
+  # Jenkins utilise network_mode: host — ces conteneurs sont créés via le socket Docker
   jenkins-ci-net:
     name: jenkins-ci-net
     driver: bridge

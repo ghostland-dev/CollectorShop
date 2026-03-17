@@ -157,13 +157,12 @@ pipeline {
         // ─────────────────────────────────────────────────────────────────────
             steps {
                 script {
-                    // Démarrer un conteneur PostgreSQL éphémère sur le réseau jenkins-ci-net
-                    // Jenkins (sur le même réseau) pourra y accéder via son nom de conteneur
+                    // Démarrer un conteneur PostgreSQL éphémère sur le réseau par défaut Docker.
+                    // Jenkins utilise network_mode: host → il peut atteindre le container par son IP (bridge docker0).
                     sh """
                         echo "Démarrage du conteneur PostgreSQL de test : ${PG_CONTAINER}"
                         docker run -d \\
                             --name ${PG_CONTAINER} \\
-                            --network jenkins-ci-net \\
                             -e POSTGRES_USER=${PG_USER} \\
                             -e POSTGRES_PASSWORD=${PG_PASSWORD} \\
                             -e POSTGRES_DB=${PG_DB} \\
@@ -187,11 +186,22 @@ pipeline {
                         done
                     """
 
+                    // Récupérer l'IP du container PostgreSQL (accessible depuis le réseau host de Jenkins)
+                    env.PG_IP = sh(
+                        script: "docker inspect ${PG_CONTAINER} --format '{{.NetworkSettings.IPAddress}}'",
+                        returnStdout: true
+                    ).trim()
+                    echo "PostgreSQL IP: ${env.PG_IP}"
+
+                    // Mettre à jour les URLs de base de données avec l'IP réelle
+                    env.DATABASE_URL     = "postgresql://${PG_USER}:${PG_PASSWORD}@${env.PG_IP}:5432/${PG_DB}?schema=public"
+                    env.TEST_DATABASE_URL = env.DATABASE_URL
+
                     // Appliquer le schéma Prisma sur la base de test
                     sh """
                         echo "Application du schéma Prisma..."
                         cd backend
-                        DATABASE_URL=${DATABASE_URL} \\
+                        DATABASE_URL=${env.DATABASE_URL} \\
                         npx prisma db push --accept-data-loss --skip-generate
                         echo "✅ Schéma Prisma appliqué"
                     """
@@ -207,7 +217,7 @@ pipeline {
                 stage('Tests Backend') {
                     steps {
                         sh """
-                            DATABASE_URL=${DATABASE_URL} \\
+                            DATABASE_URL=${env.DATABASE_URL} \\
                             JWT_SECRET=${JWT_SECRET} \\
                             JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET} \\
                             NODE_ENV=test \\
@@ -350,12 +360,12 @@ pipeline {
                         git config user.email "jenkins@collector-shop.local"
                         git config user.name  "Jenkins CI"
 
-                        # Commit et push
+                        # Commit et push vers Gitea (Jenkins est en network_mode: host → accès direct à Minikube)
                         git add ${MANIFEST_PATH}/kustomization.yaml
                         git diff --cached --quiet && echo "Pas de changement" || {
                             git commit -m "ci: deploy build ${BUILD_NUMBER} [skip ci]"
-                            git push https://\${GH_TOKEN}@github.com/Ismail-Mouyahada/CollectorShop.git HEAD:${GIT_BRANCH}
-                            echo "✅ Manifests poussés vers GitHub"
+                            git push http://gitea-admin:\${GH_TOKEN}@192.168.49.2:31200/gitea-admin/collector-shop.git HEAD:${GIT_BRANCH}
+                            echo "✅ Manifests poussés vers Gitea"
                         }
                     """
                 }

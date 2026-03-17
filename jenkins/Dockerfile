@@ -66,6 +66,6 @@ USER jenkins
 ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false -Xmx1g -Xms512m"
 ENV CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs
 
-# Installer les plugins Jenkins
-COPY --chown=jenkins:jenkins plugins.txt /usr/share/jenkins/plugins.txt
-RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/plugins.txt
+# Les plugins sont installés dans le volume Jenkins (jenkins_home).
+# Ce fichier est conservé à titre de référence uniquement.
+COPY --chown=jenkins:jenkins plugins.txt /usr/share/jenkins/ref/plugins.txt
