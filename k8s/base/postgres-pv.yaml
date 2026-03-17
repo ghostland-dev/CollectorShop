@@ -12,6 +12,9 @@ spec:
   hostPath:
     path: /data/postgres
   storageClassName: standard
+  claimRef:
+    name: postgres-pvc
+    namespace: collector-shop
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

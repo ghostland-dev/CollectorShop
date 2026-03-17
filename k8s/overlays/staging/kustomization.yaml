@@ -27,6 +27,11 @@ patches:
       - op: replace
         path: /spec/hostPath/path
         value: /data/postgres-staging
+      - op: add
+        path: /spec/claimRef
+        value:
+          name: postgres-pvc
+          namespace: collector-shop-staging
   - target:
       kind: PersistentVolumeClaim
       name: postgres-pvc

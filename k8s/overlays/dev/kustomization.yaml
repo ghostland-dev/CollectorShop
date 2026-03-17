@@ -27,6 +27,11 @@ patches:
       - op: replace
         path: /spec/hostPath/path
         value: /data/postgres-dev
+      - op: add
+        path: /spec/claimRef
+        value:
+          name: postgres-pvc
+          namespace: collector-shop-dev
   - target:
       kind: PersistentVolumeClaim
       name: postgres-pvc
