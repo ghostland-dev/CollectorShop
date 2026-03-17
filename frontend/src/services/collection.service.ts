@@ -55,7 +55,7 @@ class CollectionService {
       const response = await apiClient.get<CollectionsResponse>(
         `/collections/shop/${shopId}`
       );
-      return response.collections || [];
+      return response.data.collections || [];
     } catch (error) {
       console.error('Error fetching shop collections:', error);
       throw error;
@@ -70,7 +70,7 @@ class CollectionService {
       const response = await apiClient.get<CollectionDetail>(
         `/collections/${collectionId}`
       );
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Error fetching collection:', error);
       throw error;
@@ -83,7 +83,7 @@ class CollectionService {
   async createCollection(data: CreateCollectionInput): Promise<Collection> {
     try {
       const response = await apiClient.post<Collection>('/collections', data);
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Error creating collection:', error);
       throw error;
