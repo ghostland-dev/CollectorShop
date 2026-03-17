@@ -379,27 +379,38 @@ pipeline {
                         withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GH_TOKEN')]) {
                             sh """
                                 echo "=== Mise à jour kustomization.yaml (build ${BUILD_NUMBER}) ==="
-                                cd ${MANIFEST_PATH}
+                                GITEA_URL="http://gitea-admin:\${GH_TOKEN}@192.168.49.2:31200/gitea-admin/collector-shop.git"
+
+                                # Cloner Gitea dans un répertoire temporaire (évite les conflits
+                                # de divergence entre le workspace Jenkins et l'historique Gitea)
+                                TMPDIR=\$(mktemp -d)
+                                git clone "\${GITEA_URL}" "\${TMPDIR}/repo"
+                                cd "\${TMPDIR}/repo/${MANIFEST_PATH}"
+
+                                # Appliquer les nouveaux tags d'image
                                 kustomize edit set image \\
                                     ${PROJECT_NAME}-backend=${PROJECT_NAME}-backend:${BUILD_NUMBER}
                                 kustomize edit set image \\
                                     ${PROJECT_NAME}-frontend=${PROJECT_NAME}-frontend:${BUILD_NUMBER}
 
-                                echo "--- kustomization.yaml ---"
+                                echo "--- kustomization.yaml après mise à jour ---"
                                 cat kustomization.yaml
 
-                                cd ${WORKSPACE}
+                                # Commit + push depuis le clone propre
+                                cd "\${TMPDIR}/repo"
                                 git config user.email "jenkins@collector-shop.local"
                                 git config user.name  "Jenkins CI"
 
                                 git add ${MANIFEST_PATH}/kustomization.yaml
                                 if git diff --cached --quiet; then
-                                    echo "ℹ️  Pas de changement de manifest"
+                                    echo "ℹ️  Pas de changement de manifest (même tag)"
                                 else
                                     git commit -m "ci: deploy build ${BUILD_NUMBER} [skip ci]"
-                                    git push http://gitea-admin:\${GH_TOKEN}@192.168.49.2:31200/gitea-admin/collector-shop.git HEAD:${GIT_BRANCH}
+                                    git push origin HEAD:${GIT_BRANCH}
                                     echo "✅ Manifests poussés → Gitea"
                                 fi
+
+                                rm -rf "\${TMPDIR}"
                             """
                         }
                     }
