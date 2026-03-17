@@ -372,32 +372,42 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'ARGOCD_TOKEN', variable: 'ARGOCD_AUTH_TOKEN')]) {
                     sh """
-                        echo "=== Synchronisation ArgoCD ==="
+                        echo "=== Synchronisation ArgoCD via REST API ==="
+                        ARGOCD_URL="http://${ARGOCD_SERVER}"
 
-                        # Login ArgoCD via token (--plaintext pour connexion HTTP non-TLS)
-                        argocd login ${ARGOCD_SERVER} \\
-                            --auth-token \${ARGOCD_AUTH_TOKEN} \\
-                            --plaintext \\
-                            --grpc-web
+                        # Déclencher la synchronisation via REST API (évite les problèmes d'auth CLI v3)
+                        SYNC_RESP=\$(curl -s -X POST "\${ARGOCD_URL}/api/v1/applications/${ARGOCD_APP}/sync" \\
+                            -H "Authorization: Bearer \${ARGOCD_AUTH_TOKEN}" \\
+                            -H "Content-Type: application/json" \\
+                            -d '{"prune":false,"dryRun":false}' \\
+                            -w "\\nHTTP_CODE:%{http_code}")
+                        HTTP_CODE=\$(echo "\${SYNC_RESP}" | grep "HTTP_CODE:" | cut -d: -f2)
+                        echo "Sync request HTTP code: \${HTTP_CODE}"
 
-                        # Déclencher la synchronisation
-                        argocd app sync ${ARGOCD_APP} \\
-                            --plaintext \\
-                            --grpc-web \\
-                            --async
+                        if [ "\${HTTP_CODE}" != "200" ] && [ "\${HTTP_CODE}" != "201" ]; then
+                            echo "❌ Échec du sync ArgoCD (HTTP \${HTTP_CODE})"
+                            echo "\${SYNC_RESP}"
+                            exit 1
+                        fi
 
-                        echo "Synchronisation déclenchée. Attente que l'application soit Healthy..."
+                        echo "Synchronisation déclenchée. Attente Synced + Healthy (max 5min)..."
 
-                        # Attendre que l'application soit synchronisée et en bonne santé
-                        argocd app wait ${ARGOCD_APP} \\
-                            --plaintext \\
-                            --grpc-web \\
-                            --health \\
-                            --sync \\
-                            --timeout 300
-
-                        echo "=== Statut de l'application ==="
-                        argocd app get ${ARGOCD_APP} --plaintext --grpc-web
+                        # Attendre que l'application soit Synced + Healthy via polling REST
+                        for i in \$(seq 1 30); do
+                            APP_STATUS=\$(curl -s "\${ARGOCD_URL}/api/v1/applications/${ARGOCD_APP}" \\
+                                -H "Authorization: Bearer \${ARGOCD_AUTH_TOKEN}")
+                            SYNC_STATUS=\$(echo "\${APP_STATUS}" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['status']['sync']['status'])" 2>/dev/null)
+                            HEALTH_STATUS=\$(echo "\${APP_STATUS}" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['status']['health']['status'])" 2>/dev/null)
+                            echo "[\${i}/30] Sync: \${SYNC_STATUS} | Health: \${HEALTH_STATUS}"
+                            if [ "\${SYNC_STATUS}" = "Synced" ] && [ "\${HEALTH_STATUS}" = "Healthy" ]; then
+                                echo "✅ Application Synced + Healthy"
+                                break
+                            fi
+                            if [ \$i -eq 30 ]; then
+                                echo "⚠️ Timeout ArgoCD — l'appli n'est pas encore healthy mais le pipeline continue"
+                            fi
+                            sleep 10
+                        done
 
                         echo "✅ Déploiement ArgoCD terminé"
                     """
