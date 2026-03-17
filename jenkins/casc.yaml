@@ -1,0 +1,111 @@
+# Jenkins Configuration as Code (JCasC)
+# Ce fichier configure Jenkins automatiquement au premier démarrage.
+# Documentation: https://www.jenkins.io/projects/jcasc/
+
+jenkins:
+  systemMessage: |
+    ╔══════════════════════════════════════════════════════════╗
+    ║     Collector.shop - Jenkins CI/CD Local                 ║
+    ║     Pipeline automatisé pour le projet Shop Collector    ║
+    ╚══════════════════════════════════════════════════════════╝
+
+  # Nombre d'exécuteurs parallèles sur l'agent built-in
+  numExecutors: 4
+
+  # Realm de sécurité : authentification locale
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          name: "Administrateur"
+          password: "admin"
+
+  # Stratégie d'autorisation
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+  # Nœud built-in
+  nodes:
+    - permanent:
+        name: "built-in"
+        numExecutors: 4
+        labelString: "built-in local"
+
+# Désactiver la sécurité des scripts Job DSL
+# (nécessaire pour la création automatique de jobs via JCasC)
+security:
+  globalJobDslSecurityConfiguration:
+    useScriptSecurity: false
+
+# Configuration globale des outils
+tool:
+  git:
+    installations:
+      - name: "Default"
+        home: "git"
+
+# Paramètres globaux de l'interface
+unclassified:
+  timestamper:
+    allPipelines: true
+  ansiColorBuildWrapper:
+    colorMaps:
+      - name: xterm
+
+# Création automatique du job pipeline
+jobs:
+  - script: |
+      pipelineJob('collector-shop-pipeline') {
+        displayName('Collector.shop — Pipeline CI/CD')
+        description('''
+          <h3>Pipeline CI/CD - Collector.shop</h3>
+          <p>Pipeline complet : Lint → Build → Tests → Docker Build → Scan Sécurité</p>
+          <p><strong>Équivalent local du workflow GitHub Actions</strong></p>
+          <ul>
+            <li>Lint Backend &amp; Frontend (ESLint)</li>
+            <li>Build TypeScript (backend + frontend)</li>
+            <li>Tests unitaires + couverture de code</li>
+            <li>Build images Docker</li>
+            <li>Scan de vulnérabilités Trivy</li>
+          </ul>
+        ''')
+
+        keepDependencies(false)
+
+        logRotator {
+          numToKeep(10)
+          artifactNumToKeep(5)
+        }
+
+        definition {
+          cpsScm {
+            lightweight(true)
+            scm {
+              git {
+                remote {
+                  name('origin')
+                  url('file:///workspace/collector-shop')
+                }
+                branch('*/main')
+                extensions {
+                  cleanBeforeCheckout()
+                  cloneOptions {
+                    shallow(false)
+                    timeout(10)
+                  }
+                }
+              }
+            }
+            scriptPath('Jenkinsfile')
+          }
+        }
+
+        triggers {
+          pollSCM {
+            scmpoll_spec('H/5 * * * *')
+            ignorePostCommitHooks(false)
+          }
+        }
+      }
