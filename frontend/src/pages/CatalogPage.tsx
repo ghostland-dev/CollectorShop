@@ -6,10 +6,58 @@ import {
 } from '@mui/material';
 import { Search, Clear, FilterList } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
-import { announcementService } from '../services/announcement.service';
+import { announcementService, Announcement } from '../services/announcement.service';
 import { AnnouncementCard } from '../components/AnnouncementCard';
 import { CatalogSkeleton } from '../components/LoadingSkeleton';
 import { useNotifications } from '../hooks/useNotifications';
+
+type AnnCardAnnouncement = Parameters<typeof AnnouncementCard>[0]['announcement'];
+
+function CatalogContent({
+  isLoading,
+  error,
+  announcements,
+}: {
+  isLoading: boolean;
+  error: Error | null;
+  announcements: Announcement[] | undefined;
+}) {
+  if (isLoading) return <CatalogSkeleton />;
+  if (error) {
+    return (
+      <Alert severity="error" sx={{ m: 2 }}>
+        {error.message}
+      </Alert>
+    );
+  }
+  if (!announcements?.length) {
+    return (
+      <Box
+        sx={{
+          textAlign: 'center', py: 10,
+          bgcolor: 'rgba(248,250,252,0.02)',
+          border: '1px dashed rgba(248,250,252,0.1)',
+          borderRadius: 3,
+        }}
+      >
+        <Typography sx={{ fontSize: '3rem', mb: 2 }}>🔍</Typography>
+        <Typography variant="h6" fontWeight={600} gutterBottom>Aucune carte trouvée</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Essayez de modifier vos critères de recherche
+        </Typography>
+      </Box>
+    );
+  }
+  return (
+    <Grid container spacing={3}>
+      {announcements.map((announcement) => (
+        <Grid item xs={12} sm={6} md={4} lg={3} key={announcement.id}>
+          <AnnouncementCard announcement={announcement as AnnCardAnnouncement} />
+        </Grid>
+      ))}
+    </Grid>
+  );
+}
 
 const CATEGORIES = [
   { value: '', label: 'Toutes les cartes' },
@@ -181,40 +229,11 @@ export function CatalogPage() {
         </Typography>
       )}
 
-      {isLoading && <CatalogSkeleton />}
-
-      {!isLoading && error && (
-        <Alert severity="error" sx={{ m: 2 }}>
-          {error instanceof Error ? error.message : 'Erreur lors du chargement du catalogue'}
-        </Alert>
-      )}
-
-      {!isLoading && !error && data?.announcements?.length === 0 && (
-        <Box
-          sx={{
-            textAlign: 'center', py: 10,
-            bgcolor: 'rgba(248,250,252,0.02)',
-            border: '1px dashed rgba(248,250,252,0.1)',
-            borderRadius: 3,
-          }}
-        >
-          <Typography sx={{ fontSize: '3rem', mb: 2 }}>🔍</Typography>
-          <Typography variant="h6" fontWeight={600} gutterBottom>Aucune carte trouvée</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Essayez de modifier vos critères de recherche
-          </Typography>
-        </Box>
-      )}
-
-      {!isLoading && !error && data && data.announcements.length > 0 && (
-        <Grid container spacing={3}>
-          {data.announcements.map((announcement) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={announcement.id}>
-              <AnnouncementCard announcement={announcement as Parameters<typeof AnnouncementCard>[0]['announcement']} />
-            </Grid>
-          ))}
-        </Grid>
-      )}
+      <CatalogContent
+        isLoading={isLoading}
+        error={error}
+        announcements={data?.announcements}
+      />
     </Box>
   );
 }

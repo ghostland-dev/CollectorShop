@@ -86,6 +86,68 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Erreur inconnue';
 }
 
+function PurchaseSection({
+  status, canPurchase, isAuthenticated, isOwner, onAddToCart, onBuyNow, onNavigateLogin,
+}: {
+  status: string;
+  canPurchase: boolean;
+  isAuthenticated: boolean;
+  isOwner: boolean;
+  onAddToCart: () => void;
+  onBuyNow: () => void;
+  onNavigateLogin: () => void;
+}) {
+  return (
+    <>
+      {canPurchase && (
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <Button
+            variant="outlined"
+            size="large"
+            startIcon={<ShoppingCart />}
+            onClick={onAddToCart}
+            sx={{ flex: 1, py: 1.5 }}
+          >
+            Ajouter au panier
+          </Button>
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<Payment />}
+            onClick={onBuyNow}
+            sx={{ flex: 1, py: 1.5 }}
+          >
+            Acheter maintenant
+          </Button>
+        </Stack>
+      )}
+      {status === 'SOLD' && (
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          Cet article a déjà été vendu
+        </Alert>
+      )}
+      {!isAuthenticated && (
+        <Alert
+          severity="info"
+          sx={{ mt: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={onNavigateLogin}>
+              Connexion
+            </Button>
+          }
+        >
+          Connectez-vous pour acheter cette carte
+        </Alert>
+      )}
+      {isOwner && (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Vous êtes le vendeur de cette annonce
+        </Alert>
+      )}
+    </>
+  );
+}
+
 export function AnnouncementDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -307,54 +369,15 @@ export function AnnouncementDetailPage() {
               </Box>
             )}
 
-            {/* Purchase buttons */}
-            {canPurchase && (
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  startIcon={<ShoppingCart />}
-                  onClick={handleAddToCart}
-                  sx={{ flex: 1, py: 1.5 }}
-                >
-                  Ajouter au panier
-                </Button>
-                <Button
-                  variant="contained"
-                  size="large"
-                  startIcon={<Payment />}
-                  onClick={handleBuyNow}
-                  sx={{ flex: 1, py: 1.5 }}
-                >
-                  Acheter maintenant
-                </Button>
-              </Stack>
-            )}
-
-            {/* Alerts */}
-            {announcement.status === 'SOLD' && (
-              <Alert severity="warning" sx={{ mt: 2 }}>
-                Cet article a déjà été vendu
-              </Alert>
-            )}
-            {!isAuthenticated && (
-              <Alert
-                severity="info"
-                sx={{ mt: 2 }}
-                action={
-                  <Button color="inherit" size="small" onClick={() => navigate('/login')}>
-                    Connexion
-                  </Button>
-                }
-              >
-                Connectez-vous pour acheter cette carte
-              </Alert>
-            )}
-            {isOwner && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                Vous êtes le vendeur de cette annonce
-              </Alert>
-            )}
+            <PurchaseSection
+              status={announcement.status}
+              canPurchase={canPurchase}
+              isAuthenticated={isAuthenticated}
+              isOwner={isOwner}
+              onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
+              onNavigateLogin={() => navigate('/login')}
+            />
           </Box>
         </Grid>
       </Grid>

@@ -79,120 +79,93 @@ const categories = [
   },
 ];
 
+function HeroSection({ isAuthenticated }: { isAuthenticated: boolean }) {
+  return (
+    <Box
+      sx={{
+        position: 'relative', overflow: 'hidden',
+        py: { xs: 8, md: 12 }, mb: 8,
+        mx: { xs: -3, md: -4 }, mt: { xs: -3, md: -4 },
+        background: 'linear-gradient(135deg, #020617 0%, #0f172a 40%, #1a0a2e 100%)',
+      }}
+    >
+      <Box sx={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <Box sx={{
+          position: 'absolute', top: '-10%', right: '-5%',
+          width: 500, height: 500, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)',
+        }} />
+        <Box sx={{
+          position: 'absolute', bottom: '-20%', left: '-10%',
+          width: 600, height: 600, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)',
+        }} />
+      </Box>
+      <Container maxWidth="lg" sx={{ position: 'relative' }}>
+        <Box sx={{ textAlign: 'center', maxWidth: 780, mx: 'auto' }}>
+          <Chip
+            icon={<AutoAwesome sx={{ fontSize: '0.8rem !important', color: '#f59e0b !important' }} />}
+            label="Pokémon TCG Marketplace"
+            size="small"
+            sx={{
+              mb: 3, bgcolor: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
+              color: '#f59e0b', fontWeight: 600, letterSpacing: '0.05em', fontSize: '0.75rem',
+            }}
+          />
+          <Typography
+            variant="h1" component="h1"
+            sx={{
+              fontSize: { xs: '2.5rem', md: '4rem', lg: '4.5rem' },
+              fontWeight: 700, lineHeight: 1.05, mb: 2,
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 40%, #a78bfa 100%)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}
+          >
+            Collector.shop
+          </Typography>
+          <Typography
+            variant="h4"
+            sx={{ mb: 2, color: '#f8fafc', fontSize: { xs: '1.2rem', md: '1.6rem' }, fontWeight: 500, opacity: 0.9 }}
+          >
+            La marketplace des cartes Pokémon rares
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 5, color: '#94a3b8', maxWidth: 520, mx: 'auto', lineHeight: 1.7 }}>
+            Achetez et vendez des cartes Pokémon certifiées. Base Set 1ère édition,
+            GX Full Art, VMAX Rainbow — toutes les pièces rares en un seul endroit.
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
+            <Button
+              variant="contained" size="large" component={Link} to="/catalog"
+              endIcon={<ArrowForward />} sx={{ px: 4, py: 1.5, fontSize: '1rem' }}
+            >
+              Explorer le catalogue
+            </Button>
+            {!isAuthenticated && (
+              <Button
+                variant="outlined" size="large" component={Link} to="/register"
+                sx={{
+                  px: 4, py: 1.5, fontSize: '1rem',
+                  borderColor: 'rgba(245,158,11,0.4)', color: '#f59e0b',
+                  '&:hover': { borderColor: '#f59e0b', bgcolor: 'rgba(245,158,11,0.08)' },
+                }}
+              >
+                Créer un compte
+              </Button>
+            )}
+          </Stack>
+        </Box>
+      </Container>
+    </Box>
+  );
+}
+
 export function HomePage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   return (
     <Box>
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <Box
-        sx={{
-          position: 'relative',
-          overflow: 'hidden',
-          py: { xs: 8, md: 12 },
-          mb: 8,
-          mx: { xs: -3, md: -4 },
-          mt: { xs: -3, md: -4 },
-          background: 'linear-gradient(135deg, #020617 0%, #0f172a 40%, #1a0a2e 100%)',
-        }}
-      >
-        {/* Decorative background orbs */}
-        <Box sx={{
-          position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none',
-        }}>
-          <Box sx={{
-            position: 'absolute', top: '-10%', right: '-5%',
-            width: 500, height: 500, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)',
-          }} />
-          <Box sx={{
-            position: 'absolute', bottom: '-20%', left: '-10%',
-            width: 600, height: 600, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)',
-          }} />
-        </Box>
-
-        <Container maxWidth="lg" sx={{ position: 'relative' }}>
-          <Box sx={{ textAlign: 'center', maxWidth: 780, mx: 'auto' }}>
-            <Chip
-              icon={<AutoAwesome sx={{ fontSize: '0.8rem !important', color: '#f59e0b !important' }} />}
-              label="Pokémon TCG Marketplace"
-              size="small"
-              sx={{
-                mb: 3,
-                bgcolor: 'rgba(245,158,11,0.1)',
-                border: '1px solid rgba(245,158,11,0.3)',
-                color: '#f59e0b',
-                fontWeight: 600,
-                letterSpacing: '0.05em',
-                fontSize: '0.75rem',
-              }}
-            />
-            <Typography
-              variant="h1"
-              component="h1"
-              sx={{
-                fontSize: { xs: '2.5rem', md: '4rem', lg: '4.5rem' },
-                fontWeight: 700,
-                lineHeight: 1.05,
-                mb: 2,
-                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 40%, #a78bfa 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              Collector.shop
-            </Typography>
-            <Typography
-              variant="h4"
-              sx={{
-                mb: 2,
-                color: '#f8fafc',
-                fontSize: { xs: '1.2rem', md: '1.6rem' },
-                fontWeight: 500,
-                opacity: 0.9,
-              }}
-            >
-              La marketplace des cartes Pokémon rares
-            </Typography>
-            <Typography
-              variant="body1"
-              sx={{ mb: 5, color: '#94a3b8', maxWidth: 520, mx: 'auto', lineHeight: 1.7 }}
-            >
-              Achetez et vendez des cartes Pokémon certifiées. Base Set 1ère édition,
-              GX Full Art, VMAX Rainbow — toutes les pièces rares en un seul endroit.
-            </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
-              <Button
-                variant="contained"
-                size="large"
-                component={Link}
-                to="/catalog"
-                endIcon={<ArrowForward />}
-                sx={{ px: 4, py: 1.5, fontSize: '1rem' }}
-              >
-                Explorer le catalogue
-              </Button>
-              {!isAuthenticated && (
-                <Button
-                  variant="outlined"
-                  size="large"
-                  component={Link}
-                  to="/register"
-                  sx={{
-                    px: 4, py: 1.5, fontSize: '1rem',
-                    borderColor: 'rgba(245,158,11,0.4)',
-                    color: '#f59e0b',
-                    '&:hover': { borderColor: '#f59e0b', bgcolor: 'rgba(245,158,11,0.08)' },
-                  }}
-                >
-                  Créer un compte
-                </Button>
-              )}
-            </Stack>
-          </Box>
-        </Container>
-      </Box>
+      <HeroSection isAuthenticated={isAuthenticated} />
 
       {/* ── Stats ─────────────────────────────────────────────────────────── */}
       <Box sx={{ mb: 8 }}>
