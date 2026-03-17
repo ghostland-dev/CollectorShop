@@ -43,14 +43,14 @@ pipeline {
         NODE_VERSION    = '20'
 
         // ─── Base de données PostgreSQL éphémère pour les tests ───────────────
+        // Jenkins est en network_mode: host → on mappe le port 15432 du host vers 5432 du container
         PG_CONTAINER        = "jenkins-pg-${BUILD_NUMBER}"
         PG_USER             = 'test'
         PG_PASSWORD         = 'test'
         PG_DB               = 'collector_shop_test'
-        // DATABASE_URL est mis à jour dynamiquement dans la stage 'Démarrage PostgreSQL de test'
-        // avec l'IP réelle du container (réseau host Jenkins → accès par IP docker0)
-        DATABASE_URL        = "postgresql://test:test@127.0.0.1:5432/collector_shop_test?schema=public"
-        TEST_DATABASE_URL   = "postgresql://test:test@127.0.0.1:5432/collector_shop_test?schema=public"
+        PG_PORT             = '15432'
+        DATABASE_URL        = "postgresql://test:test@localhost:15432/collector_shop_test?schema=public"
+        TEST_DATABASE_URL   = "postgresql://test:test@localhost:15432/collector_shop_test?schema=public"
 
         // ─── Secrets de test ───────────────────────────────────────────────────
         JWT_SECRET          = 'jenkins-ci-test-secret-32chars!!'
@@ -159,12 +159,13 @@ pipeline {
         // ─────────────────────────────────────────────────────────────────────
             steps {
                 script {
-                    // Démarrer un conteneur PostgreSQL éphémère sur le réseau par défaut Docker.
-                    // Jenkins utilise network_mode: host → il peut atteindre le container par son IP (bridge docker0).
+                    // Jenkins est en network_mode: host → port mapping -p 15432:5432 rend
+                    // PostgreSQL accessible directement via localhost:15432
                     sh """
                         echo "Démarrage du conteneur PostgreSQL de test : ${PG_CONTAINER}"
                         docker run -d \\
                             --name ${PG_CONTAINER} \\
+                            -p ${PG_PORT}:5432 \\
                             -e POSTGRES_USER=${PG_USER} \\
                             -e POSTGRES_PASSWORD=${PG_PASSWORD} \\
                             -e POSTGRES_DB=${PG_DB} \\
@@ -173,10 +174,10 @@ pipeline {
 
                     // Attente que PostgreSQL soit prêt à accepter des connexions
                     sh """
-                        echo "Attente de PostgreSQL..."
+                        echo "Attente de PostgreSQL sur localhost:${PG_PORT}..."
                         for i in \$(seq 1 30); do
                             if docker exec ${PG_CONTAINER} pg_isready -U ${PG_USER} 2>/dev/null; then
-                                echo "✅ PostgreSQL prêt !"
+                                echo "✅ PostgreSQL prêt sur localhost:${PG_PORT} !"
                                 break
                             fi
                             if [ \$i -eq 30 ]; then
@@ -188,22 +189,11 @@ pipeline {
                         done
                     """
 
-                    // Récupérer l'IP du container PostgreSQL (accessible depuis le réseau host de Jenkins)
-                    env.PG_IP = sh(
-                        script: "docker inspect ${PG_CONTAINER} --format '{{.NetworkSettings.IPAddress}}'",
-                        returnStdout: true
-                    ).trim()
-                    echo "PostgreSQL IP: ${env.PG_IP}"
-
-                    // Mettre à jour les URLs de base de données avec l'IP réelle
-                    env.DATABASE_URL     = "postgresql://${PG_USER}:${PG_PASSWORD}@${env.PG_IP}:5432/${PG_DB}?schema=public"
-                    env.TEST_DATABASE_URL = env.DATABASE_URL
-
-                    // Appliquer le schéma Prisma sur la base de test
+                    // Appliquer le schéma Prisma sur la base de test via localhost:15432
                     sh """
                         echo "Application du schéma Prisma..."
                         cd backend
-                        DATABASE_URL=${env.DATABASE_URL} \\
+                        DATABASE_URL=${DATABASE_URL} \\
                         npx prisma db push --accept-data-loss --skip-generate
                         echo "✅ Schéma Prisma appliqué"
                     """
@@ -219,7 +209,7 @@ pipeline {
                 stage('Tests Backend') {
                     steps {
                         sh """
-                            DATABASE_URL=${env.DATABASE_URL} \\
+                            DATABASE_URL=${DATABASE_URL} \\
                             JWT_SECRET=${JWT_SECRET} \\
                             JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET} \\
                             NODE_ENV=test \\
