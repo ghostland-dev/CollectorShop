@@ -1,4 +1,9 @@
-# 🏗️ Infrastructure Minikube — ArgoCD + Netdata + Jenkins
+minikube addons disable ingress
+
+# Tes services collector-shop utilisent déjà des NodePorts — c'est suffisant :
+# Backend  → http://$(minikube ip):31000
+# Frontend → http://$(minikube ip):31001
+# ArgoCD   → http://$(minikube ip):30080# 🏗️ Infrastructure Minikube — ArgoCD + Netdata + Jenkins
 
 **Projet** : Collector.shop  
 **Date** : Mars 2026  
@@ -246,7 +251,7 @@ k8s/monitoring/netdata/
 
 ```bash
 # Cible : NodePort Minikube backend
-http://$(minikube ip):30000
+http://$(minikube ip):31000
 
 # Scénario : tests/load-tests/artillery.yml
 # Configuration :
@@ -273,7 +278,7 @@ make test
 
 # Tests de charge uniquement
 npx artillery run \
-  --target http://$(minikube ip):30000 \
+  --target http://$(minikube ip):31000 \
   tests/load-tests/artillery.yml
 
 # Vérifier la couverture
@@ -324,7 +329,7 @@ git push
     │  └──► argocd app wait --health --timeout=300
     ▼
 [Stage 11] Tests de Charge Artillery
-    │  └──► artillery run --target http://$(minikube ip):30000
+    │  └──► artillery run --target http://$(minikube ip):31000
     │  └──► Rapport HTML publié dans Jenkins
     │
     ▼

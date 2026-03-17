@@ -16,6 +16,8 @@ resources:
   - loki.yaml
   - promtail.yaml
   - hpa.yaml
+  - tls-secret.yaml
+  - ingress.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: collector-shop

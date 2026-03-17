@@ -11,10 +11,11 @@ metadata:
 spec:
   description: "Projet Collector.shop — Plateforme de vente d'objets de collection"
 
-  # Dépôt source autorisé (GitHub du projet)
   sourceRepos:
     - "https://github.com/Ismail-Mouyahada/CollectorShop.git"
     - "https://github.com/Ismail-Mouyahada/CollectorShop"
+    - "http://gitea.gitea.svc.cluster.local:3000/gitea-admin/collector-shop.git"
+    - "http://gitea.gitea.svc.cluster.local:3000/*"
 
   # Namespace de destination autorisé
   destinations:

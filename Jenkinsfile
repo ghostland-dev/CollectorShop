@@ -64,7 +64,7 @@ pipeline {
         ARGOCD_APP          = 'collector-shop'
 
         // ─── Minikube ─────────────────────────────────────────────────────────
-        MINIKUBE_BACKEND_URL = 'http://192.168.49.2:30000'   // NodePort backend
+        MINIKUBE_BACKEND_URL = 'http://192.168.49.2:31000'   // NodePort backend
 
         // ─── Tests de charge Artillery ────────────────────────────────────────
         ARTILLERY_CONFIG    = 'tests/load-tests/artillery.yml'

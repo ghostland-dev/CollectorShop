@@ -16,9 +16,9 @@ metadata:
 spec:
   project: collector-shop
 
-  # ─── Source : dépôt GitHub, overlay Minikube ───────────────────────────────
+  # ─── Source : Gitea local (dans Minikube), overlay Minikube ─────────────────
   source:
-    repoURL: "https://github.com/Ismail-Mouyahada/CollectorShop.git"
+    repoURL: "http://gitea.gitea.svc.cluster.local:3000/gitea-admin/collector-shop.git"
     targetRevision: main
     path: k8s/overlays/minikube
 

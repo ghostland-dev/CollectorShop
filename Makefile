@@ -734,9 +734,9 @@ infra-up: ## Lance toute l'infrastructure (Minikube + ArgoCD + Netdata + App)
 	@echo "$(GREEN)════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
 	@echo "$(YELLOW)📊 ArgoCD    : http://$(shell minikube ip):30080$(NC)"
-	@echo "$(YELLOW)🌐 Backend   : http://$(shell minikube ip):30000$(NC)"
-	@echo "$(YELLOW)🌐 Frontend  : http://$(shell minikube ip):30001$(NC)"
-	@echo "$(YELLOW)📈 Grafana   : http://$(shell minikube ip):30300$(NC)"
+	@echo "$(YELLOW)🌐 Backend   : http://$(shell minikube ip):31000$(NC)"
+	@echo "$(YELLOW)🌐 Frontend  : http://$(shell minikube ip):31001$(NC)"
+	@echo "$(YELLOW)📈 Grafana   : http://$(shell minikube ip):31300$(NC)"
 	@echo ""
 	@echo "$(YELLOW)🔑 ArgoCD admin password : make argocd-password$(NC)"
 	@echo "$(YELLOW)📊 Netdata               : make netdata-install  (pas de clé API requise)$(NC)"
@@ -772,9 +772,9 @@ infra-status: ## Affiche le statut complet de l'infrastructure
 	@echo ""
 	@echo "$(YELLOW)🌐 URLs :$(NC)"
 	@echo "  ArgoCD   : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):30080"
-	@echo "  Backend  : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):30000"
-	@echo "  Frontend : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):30001"
-	@echo "  Grafana  : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):30300"
+	@echo "  Backend  : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):31000"
+	@echo "  Frontend : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):31001"
+	@echo "  Grafana  : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):31300"
 
 # Commande par défaut
 .DEFAULT_GOAL := help

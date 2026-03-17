@@ -56,6 +56,10 @@ RUN apt-get update && apt-get install -y git
 # Nettoyer les caches apt
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Créer .gitconfig directement dans l'image (évite les problèmes de bind-mount overlay2)
+RUN printf '[safe]\n\tdirectory = /workspace/collector-shop\n\tdirectory = *\n' > /root/.gitconfig \
+    && chmod 644 /root/.gitconfig
+
 USER jenkins
 
 # Désactiver le wizard de configuration initiale
