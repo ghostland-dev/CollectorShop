@@ -104,48 +104,48 @@ async function main() {
 
   await prisma.shop.create({
     data: {
-      name: 'Admin Shop',
-      description: 'Boutique officielle de Collector.shop',
+      name: 'Collector.shop Admin',
+      description: 'Boutique officielle de Collector.shop — cartes Pokémon certifiées',
       userId: admin.id,
     },
   });
 
   await prisma.shop.create({
     data: {
-      name: 'Jean\'s Collectors',
-      description: 'Collection spécialisée en timbres rares et philatélie',
+      name: 'Jean\'s Pokémon Paradise',
+      description: 'Spécialiste cartes Pokémon Base Set et Fossil — toutes les cartes sont en pochette protectrice depuis l\'achat',
       userId: seller1.id,
     },
   });
 
   await prisma.shop.create({
     data: {
-      name: 'Marie\'s Numismatic Vault',
-      description: 'Pièces de monnaie anciennes et collectibles',
+      name: 'Marie\'s Rare Cards Vault',
+      description: 'Cartes holographiques et ultra-rares des sets Neo Genesis et Neo Discovery',
       userId: seller2.id,
     },
   });
 
   await prisma.shop.create({
     data: {
-      name: 'Pierre\'s Card Paradise',
-      description: 'Cartes à collectionner premium et éditions limitées',
+      name: 'Pierre\'s TCG Treasure',
+      description: 'Cartes Pokémon EX, GX et V ultra-rares — première édition et éditions limitées',
       userId: seller3.id,
     },
   });
 
   await prisma.shop.create({
     data: {
-      name: 'Sophie\'s Collection Corner',
-      description: 'Acheteur passionné cherchant des pièces rares',
+      name: 'Sophie\'s Pokémon Hunt',
+      description: 'Collectionneuse passionnée à la recherche de cartes rares',
       userId: buyer1.id,
     },
   });
 
   await prisma.shop.create({
     data: {
-      name: 'Thomas\'s Trading Post',
-      description: 'Échange et achat de collections intéressantes',
+      name: 'Thomas\'s Card Exchange',
+      description: 'Échange et achat de cartes Pokémon rares',
       userId: buyer2.id,
     },
   });
@@ -155,133 +155,133 @@ async function main() {
   // Créer des annonces
   console.log('📦 Création des annonces...');
 
-  // Images Pexels pour les annonces (URLs valides et variées)
-  const pexelsImages = {
-    philatelie: [
-      'https://images.pexels.com/photos/159751/book-address-book-learning-learn-159751.jpeg?auto=compress&cs=tinysrgb&w=800',
-      'https://images.pexels.com/photos/159711/books-bookstore-book-reading-159711.jpeg?auto=compress&cs=tinysrgb&w=800',
-      'https://images.pexels.com/photos/415071/pexels-photo-415071.jpeg?auto=compress&cs=tinysrgb&w=800',
-    ],
-    numismatique: [
-      'https://images.pexels.com/photos/259200/pexels-photo-259200.jpeg?auto=compress&cs=tinysrgb&w=800',
-      'https://images.pexels.com/photos/259249/pexels-photo-259249.jpeg?auto=compress&cs=tinysrgb&w=800',
-      'https://images.pexels.com/photos/259201/pexels-photo-259201.jpeg?auto=compress&cs=tinysrgb&w=800',
-    ],
-    cartes: [
-      'https://images.pexels.com/photos/163117/board-game-cards-game-playing-cards-163117.jpeg?auto=compress&cs=tinysrgb&w=800',
-      'https://images.pexels.com/photos/163118/board-game-cards-game-playing-cards-163118.jpeg?auto=compress&cs=tinysrgb&w=800',
-      'https://images.pexels.com/photos/163119/board-game-cards-game-playing-cards-163119.jpeg?auto=compress&cs=tinysrgb&w=800',
-    ],
-  };
+  // ─── Images cartes Pokémon rares (CDN officiel PokéTCG) ───────────────────
+  // Base Set (1999) — Holographiques rares
+  const charizardBase    = 'https://images.pokemontcg.io/base1/4_hires.png';
+  const blastoiseBase    = 'https://images.pokemontcg.io/base1/2_hires.png';
+  const venusaurBase     = 'https://images.pokemontcg.io/base1/15_hires.png';
+  const pikachuBase      = 'https://images.pokemontcg.io/base1/58_hires.png';
+  const mewtwoBase       = 'https://images.pokemontcg.io/base1/10_hires.png';
+  const lugiaNeo         = 'https://images.pokemontcg.io/neo1/9_hires.png';
+  const hoOhNeo          = 'https://images.pokemontcg.io/neo4/22_hires.png';
+  // EX / GX / V rares
+  const charizardGX      = 'https://images.pokemontcg.io/sm12/21_hires.png';
+  const pikachuVmax      = 'https://images.pokemontcg.io/swsh45/14_hires.png';
+  const mewtwoGX         = 'https://images.pokemontcg.io/sm5/31_hires.png';
+  const rayquazaEx       = 'https://images.pokemontcg.io/exy/60_hires.png';
+  const umbreonGX        = 'https://images.pokemontcg.io/sm3/80_hires.png';
 
   const announcements = [
+    // ─── Jean : Base Set & Neo (holographiques 1999-2000) ─────────────────
     {
-      title: 'Timbre rare France 1950 - Marianne',
-      description: 'Timbre postal français de 1950 en excellent état, série Marianne. Parfait pour collectionneurs de philatélie. Conservé dans un album depuis l\'achat.',
-      price: 150.0,
-      category: 'Philatélie',
+      title: 'Charizard Holographique — Base Set 1ère Édition (1999)',
+      description: 'Charizard Holo 1ère édition, set de base 1999. Note PSA estimée 8/10. Carte en pochette rigide depuis l\'achat. L\'une des cartes les plus recherchées au monde. Certificat d\'authenticité inclus.',
+      price: 8500.0,
+      category: 'Cartes Pokémon',
       status: 'PUBLISHED' as const,
       sellerId: seller1.id,
-      images: [pexelsImages.philatelie[0]],
+      images: [charizardBase],
     },
     {
-      title: 'Collection complète de timbres années 60',
-      description: 'Collection complète de timbres français des années 1960. Plus de 200 timbres différents, tous en très bon état. Album inclus.',
-      price: 450.0,
-      category: 'Philatélie',
+      title: 'Blastoise Holographique — Base Set 1ère Édition (1999)',
+      description: 'Blastoise Holo 1ère édition, set de base 1999. Très bon état, coins légèrement arrondis. Conservée en sleeve depuis 2001. Idéale pour compléter le trio de starters holographiques.',
+      price: 2200.0,
+      category: 'Cartes Pokémon',
       status: 'PUBLISHED' as const,
       sellerId: seller1.id,
-      images: [pexelsImages.philatelie[1]],
+      images: [blastoiseBase],
     },
     {
-      title: 'Pièce de 2€ commémorative 2004',
-      description: 'Pièce de 2 euros commémorative française de 2004, édition limitée. État neuf, jamais utilisée. Parfaite pour collectionneurs numismates.',
-      price: 25.0,
-      category: 'Numismatique',
+      title: 'Mewtwo Holographique — Base Set Unlimited',
+      description: 'Mewtwo Holo Base Set édition illimitée. Légendaire des jeux Game Boy, désormais pièce de collection incontournable. État Near Mint.',
+      price: 320.0,
+      category: 'Cartes Pokémon',
+      status: 'PUBLISHED' as const,
+      sellerId: seller1.id,
+      images: [mewtwoBase],
+    },
+    {
+      title: 'Lugia Holographique — Neo Genesis 1ère Édition (2000)',
+      description: 'Lugia Holo 1ère édition Neo Genesis, la carte emblématique du film Pokémon 2000. État Excellent, dorures brillantes intactes. Très rare en première édition.',
+      price: 4800.0,
+      category: 'Cartes Pokémon',
+      status: 'PUBLISHED' as const,
+      sellerId: seller1.id,
+      images: [lugiaNeo],
+    },
+    // ─── Marie : EX / GX ultra-rares ──────────────────────────────────────
+    {
+      title: 'Charizard-GX Full Art — SM Burning Shadows (2017)',
+      description: 'Charizard GX Full Art hyper rare, set Burning Shadows 2017. Note PSA 9. Illustration spectaculaire sur fond noir. Pièce maîtresse pour tout collectionneur moderne.',
+      price: 1850.0,
+      category: 'Cartes Pokémon',
       status: 'PUBLISHED' as const,
       sellerId: seller2.id,
-      images: [pexelsImages.numismatique[0]],
+      images: [charizardGX],
     },
     {
-      title: 'Collection de pièces anciennes (1800-1900)',
-      description: 'Collection de 15 pièces françaises anciennes datant de 1800 à 1900. Toutes authentifiées. Provenance garantie.',
-      price: 850.0,
-      category: 'Numismatique',
+      title: 'Mewtwo-GX Full Art — SM Shining Legends (2017)',
+      description: 'Mewtwo GX Full Art ultra-rare, édition Shining Legends. Tirage limité en booster spécial. Parfaite condition, jamais jouée. Sleeve premium depuis l\'ouverture.',
+      price: 680.0,
+      category: 'Cartes Pokémon',
       status: 'PUBLISHED' as const,
       sellerId: seller2.id,
-      images: [pexelsImages.numismatique[1]],
+      images: [mewtwoGX],
     },
     {
-      title: 'Carte Pokémon première édition - Charizard',
-      description: 'Carte Pokémon Charizard première édition en excellent état. Carte rare et recherchée par les collectionneurs. Protégée depuis l\'achat.',
-      price: 1200.0,
-      category: 'Cartes',
+      title: 'Umbreon-GX Full Art — SM Hidden Fates (2019)',
+      description: 'Umbreon GX Full Art Hidden Fates, set extrêmement rare avec tirage limité. Art signé par l\'illustrateur. État Near Mint, encapsulation possible.',
+      price: 950.0,
+      category: 'Cartes Pokémon',
       status: 'PUBLISHED' as const,
-      sellerId: seller3.id,
-      images: [pexelsImages.cartes[0]],
+      sellerId: seller2.id,
+      images: [umbreonGX],
     },
     {
-      title: 'Lot de cartes Magic: The Gathering',
-      description: 'Lot de 50 cartes Magic: The Gathering rares et mythiques. Mélange de différentes éditions. Parfait pour débuter ou compléter une collection.',
-      price: 180.0,
-      category: 'Cartes',
+      title: 'Rayquaza-EX Full Art — XY Black Star Promo (2015)',
+      description: 'Rayquaza EX Full Art promo exclusive XY. Dorures du dragon vert parfaitement conservées. L\'une des cartes EX les plus appréciées pour son artwork.',
+      price: 420.0,
+      category: 'Cartes Pokémon',
       status: 'PUBLISHED' as const,
-      sellerId: seller3.id,
-      images: [pexelsImages.cartes[1]],
+      sellerId: seller2.id,
+      images: [rayquazaEx],
     },
+    // ─── Pierre : VMAX / Vintage rares ────────────────────────────────────
     {
-      title: 'Timbre commémoratif JO 1968',
-      description: 'Timbre commémoratif des Jeux Olympiques de 1968. État impeccable, dentelure parfaite. Rare et recherché.',
-      price: 75.0,
-      category: 'Philatélie',
-      status: 'PUBLISHED' as const,
-      sellerId: seller1.id,
-      images: [pexelsImages.philatelie[2]],
-    },
-    {
-      title: 'Pièce d\'or Napoléon III',
-      description: 'Pièce d\'or de 20 francs Napoléon III, année 1867. Authentifiée par un expert. Très bon état de conservation.',
+      title: 'Pikachu VMAX Rainbow — SWSH Vivid Voltage (2020)',
+      description: 'Pikachu VMAX Rainbow Rare, set Vivid Voltage 2020. La carte la plus iconique de la série Sword & Shield. Notée PSA 10 Gem Mint. Investissement sûr.',
       price: 3200.0,
-      category: 'Numismatique',
-      status: 'PUBLISHED' as const,
-      sellerId: seller2.id,
-      images: [pexelsImages.numismatique[2]],
-    },
-    {
-      title: 'Carte Yu-Gi-Oh! Blue Eyes White Dragon',
-      description: 'Carte Yu-Gi-Oh! Blue Eyes White Dragon première édition, édition limitée. Carte emblématique en excellent état.',
-      price: 350.0,
-      category: 'Cartes',
+      category: 'Cartes Pokémon',
       status: 'PUBLISHED' as const,
       sellerId: seller3.id,
-      images: [pexelsImages.cartes[2]],
+      images: [pikachuVmax],
     },
     {
-      title: 'Collection de timbres internationaux',
-      description: 'Collection variée de timbres internationaux (Europe, Asie, Amériques). Plus de 300 timbres différents, tous en bon état.',
-      price: 280.0,
-      category: 'Philatélie',
-      status: 'PUBLISHED' as const,
-      sellerId: seller1.id,
-      images: [pexelsImages.philatelie[0]],
-    },
-    {
-      title: 'Ancien billet de banque français',
-      description: 'Billet de 100 francs français des années 1950. État correct, quelques plis mais lisible. Pièce historique intéressante.',
-      price: 120.0,
-      category: 'Numismatique',
-      status: 'PUBLISHED' as const,
-      sellerId: seller2.id,
-      images: [pexelsImages.numismatique[0]],
-    },
-    {
-      title: 'Carte à collectionner Star Wars',
-      description: 'Collection de cartes à collectionner Star Wars des années 80. Lot de 30 cartes en très bon état. Nostalgie garantie.',
-      price: 95.0,
-      category: 'Cartes',
+      title: 'Pikachu Illustrateur Promo — 1998 (réimpression certifiée)',
+      description: 'Réimpression officielle certifiée du légendaire Pikachu Illustrateur (1998), la carte la plus rare au monde. Certificat d\'authenticité numéroté. Idéal comme pièce de musée.',
+      price: 12000.0,
+      category: 'Cartes Pokémon',
       status: 'PUBLISHED' as const,
       sellerId: seller3.id,
-      images: [pexelsImages.cartes[0]],
+      images: [pikachuBase],
+    },
+    {
+      title: 'Vénusaure Holographique — Base Set 1ère Édition (1999)',
+      description: 'Vénusaure Holo 1ère édition, set de base 1999. Complète le trio légendaire avec Charizard et Blastoise. État Very Good, légères marques de jeu en coin.',
+      price: 1600.0,
+      category: 'Cartes Pokémon',
+      status: 'PUBLISHED' as const,
+      sellerId: seller3.id,
+      images: [venusaurBase],
+    },
+    {
+      title: 'Ho-Oh Holographique — Neo Destiny 1ère Édition (2002)',
+      description: 'Ho-Oh Holo rare 1ère édition Neo Destiny, ultime set de la série Neo. Carte très difficile à trouver en première édition. État Excellent-Mint.',
+      price: 2100.0,
+      category: 'Cartes Pokémon',
+      status: 'PUBLISHED' as const,
+      sellerId: seller3.id,
+      images: [hoOhNeo],
     },
   ];
 
@@ -305,168 +305,132 @@ async function main() {
   // Créer des collections
   console.log('📚 Création des collections...');
 
-  // Collections pour Jean (Philatélie)
+  // Collections pour Jean (Base Set & Neo)
   if (seller1Shop) {
-    const rareStampsCollection = await prisma.collection.create({
+    const baseSetCollection = await prisma.collection.create({
       data: {
-        name: 'Timbres Rares',
-        description: 'Collection de timbres rares et recherchés pour les collectionneurs de philatélie',
-        image: 'https://images.pexels.com/photos/159751/book-address-book-learning-learn-159751.jpeg?auto=compress&cs=tinysrgb&w=800',
+        name: 'Base Set 1ère Édition (1999)',
+        description: 'Les cartes holographiques originales du premier set Pokémon — les plus recherchées au monde',
+        image: charizardBase,
         shopId: seller1Shop.id,
       },
     });
 
-    const vintagStampsCollection = await prisma.collection.create({
+    const neoCollection = await prisma.collection.create({
       data: {
-        name: 'Timbres Vintage (1950-1970)',
-        description: 'Timbres authentiques des années 1950 à 1970, période dorée de la philatélie',
-        image: 'https://images.pexels.com/photos/159711/books-bookstore-book-reading-159711.jpeg?auto=compress&cs=tinysrgb&w=800',
+        name: 'Série Neo Genesis & Neo Destiny',
+        description: 'Cartes holographiques des sets Neo (2000-2002), incluant Lugia et Ho-Oh légendaires',
+        image: lugiaNeo,
         shopId: seller1Shop.id,
       },
     });
 
-    const internationalCollection = await prisma.collection.create({
+    const unlimitedCollection = await prisma.collection.create({
       data: {
-        name: 'Timbres Internationaux',
-        description: 'Sélection variée de timbres du monde entier',
-        image: 'https://images.pexels.com/photos/415071/pexels-photo-415071.jpeg?auto=compress&cs=tinysrgb&w=800',
+        name: 'Base Set Unlimited',
+        description: 'Cartes holographiques du Base Set édition illimitée — état Near Mint',
+        image: mewtwoBase,
         shopId: seller1Shop.id,
       },
     });
 
-    // Assigner les annonces de seller1 aux collections
     const seller1Announcements = createdAnnouncements.filter(a => a.sellerId === seller1.id);
-    
+
     for (const ann of seller1Announcements) {
-      if (ann.category === 'Philatélie') {
-        if (ann.title.includes('1950') || ann.title.includes('années 60')) {
-          await prisma.announcement.update({
-            where: { id: ann.id },
-            data: { collectionId: vintagStampsCollection.id },
-          });
-        } else if (ann.title.includes('rare') || ann.title.includes('JO')) {
-          await prisma.announcement.update({
-            where: { id: ann.id },
-            data: { collectionId: rareStampsCollection.id },
-          });
-        } else {
-          await prisma.announcement.update({
-            where: { id: ann.id },
-            data: { collectionId: internationalCollection.id },
-          });
-        }
+      if (ann.title.includes('1ère Édition') && (ann.title.includes('Charizard') || ann.title.includes('Blastoise'))) {
+        await prisma.announcement.update({ where: { id: ann.id }, data: { collectionId: baseSetCollection.id } });
+      } else if (ann.title.includes('Lugia') || ann.title.includes('Neo')) {
+        await prisma.announcement.update({ where: { id: ann.id }, data: { collectionId: neoCollection.id } });
+      } else {
+        await prisma.announcement.update({ where: { id: ann.id }, data: { collectionId: unlimitedCollection.id } });
       }
     }
 
     console.log('✅ 3 collections créées pour Jean');
   }
 
-  // Collections pour Marie (Numismatique)
+  // Collections pour Marie (EX / GX)
   if (seller2Shop) {
-    const ancientCoinsCollection = await prisma.collection.create({
+    const gxCollection = await prisma.collection.create({
       data: {
-        name: 'Pièces Anciennes (1800-1900)',
-        description: 'Collection de pièces françaises authentiques du 19ème siècle',
-        image: 'https://images.pexels.com/photos/259200/pexels-photo-259200.jpeg?auto=compress&cs=tinysrgb&w=800',
+        name: 'Cartes GX Full Art (2016-2019)',
+        description: 'Cartes GX Full Art ultra-rares de la série Sun & Moon — illustrations spectaculaires',
+        image: charizardGX,
         shopId: seller2Shop.id,
       },
     });
 
-    const commemorativeCollection = await prisma.collection.create({
+    const hiddenFatesCollection = await prisma.collection.create({
       data: {
-        name: 'Pièces Commémoratives',
-        description: 'Pièces spéciales et éditions limitées de différentes périodes',
-        image: 'https://images.pexels.com/photos/259249/pexels-photo-259249.jpeg?auto=compress&cs=tinysrgb&w=800',
+        name: 'Hidden Fates — Tirage Limité (2019)',
+        description: 'Le set le plus rare de la série Shiny Vault — tirage extrêmement limité',
+        image: umbreonGX,
         shopId: seller2Shop.id,
       },
     });
 
-    const goldCoinsCollection = await prisma.collection.create({
+    const promoCollection = await prisma.collection.create({
       data: {
-        name: 'Pièces d\'Or',
-        description: 'Sélection premium de pièces d\'or authentiques et certificatées',
-        image: 'https://images.pexels.com/photos/259201/pexels-photo-259201.jpeg?auto=compress&cs=tinysrgb&w=800',
+        name: 'Cartes Promo & EX Rares',
+        description: 'Cartes promotionnelles exclusives et EX Full Art recherchées',
+        image: rayquazaEx,
         shopId: seller2Shop.id,
       },
     });
 
-    // Assigner les annonces de seller2 aux collections
     const seller2Announcements = createdAnnouncements.filter(a => a.sellerId === seller2.id);
-    
+
     for (const ann of seller2Announcements) {
-      if (ann.category === 'Numismatique') {
-        if (ann.title.includes('Napoléon') || ann.title.includes('or')) {
-          await prisma.announcement.update({
-            where: { id: ann.id },
-            data: { collectionId: goldCoinsCollection.id },
-          });
-        } else if (ann.title.includes('1800') || ann.title.includes('ancien')) {
-          await prisma.announcement.update({
-            where: { id: ann.id },
-            data: { collectionId: ancientCoinsCollection.id },
-          });
-        } else {
-          await prisma.announcement.update({
-            where: { id: ann.id },
-            data: { collectionId: commemorativeCollection.id },
-          });
-        }
+      if (ann.title.includes('Hidden Fates') || ann.title.includes('Umbreon')) {
+        await prisma.announcement.update({ where: { id: ann.id }, data: { collectionId: hiddenFatesCollection.id } });
+      } else if (ann.title.includes('GX')) {
+        await prisma.announcement.update({ where: { id: ann.id }, data: { collectionId: gxCollection.id } });
+      } else {
+        await prisma.announcement.update({ where: { id: ann.id }, data: { collectionId: promoCollection.id } });
       }
     }
 
     console.log('✅ 3 collections créées pour Marie');
   }
 
-  // Collections pour Pierre (Cartes)
+  // Collections pour Pierre (VMAX / Vintage rares)
   if (seller3Shop) {
-    const pokemonCollection = await prisma.collection.create({
+    const vmaxCollection = await prisma.collection.create({
       data: {
-        name: 'Cartes Pokémon',
-        description: 'Cartes Pokémon rares et premières éditions pour les collectionneurs passionnés',
-        image: 'https://images.pexels.com/photos/163117/board-game-cards-game-playing-cards-163117.jpeg?auto=compress&cs=tinysrgb&w=800',
+        name: 'Cartes VMAX Rainbow Rare (2020-2022)',
+        description: 'Les cartes Rainbow Rare VMAX de la série Sword & Shield — investissements sûrs',
+        image: pikachuVmax,
         shopId: seller3Shop.id,
       },
     });
 
-    const magicCollection = await prisma.collection.create({
+    const illustrateurCollection = await prisma.collection.create({
       data: {
-        name: 'Magic: The Gathering',
-        description: 'Cartes rares et mythiques de Magic pour les joueurs et collectionneurs',
-        image: 'https://images.pexels.com/photos/163118/board-game-cards-game-playing-cards-163118.jpeg?auto=compress&cs=tinysrgb&w=800',
+        name: 'Éditions Spéciales & Illustrateur',
+        description: 'Cartes promotionnelles exceptionnelles et réimpressions certifiées des cartes légendaires',
+        image: pikachuBase,
         shopId: seller3Shop.id,
       },
     });
 
-    const otherCardGamesCollection = await prisma.collection.create({
+    const vintage1erEdCollection = await prisma.collection.create({
       data: {
-        name: 'Autres Jeux de Cartes',
-        description: 'Sélection variée d\'autres jeux de cartes à collectionner',
-        image: 'https://images.pexels.com/photos/163119/board-game-cards-game-playing-cards-163119.jpeg?auto=compress&cs=tinysrgb&w=800',
+        name: 'Vintage 1ère Édition — Starters Holo',
+        description: 'Les trois starters holographiques 1ère édition 1999 — trio légendaire complet',
+        image: venusaurBase,
         shopId: seller3Shop.id,
       },
     });
 
-    // Assigner les annonces de seller3 aux collections
     const seller3Announcements = createdAnnouncements.filter(a => a.sellerId === seller3.id);
-    
+
     for (const ann of seller3Announcements) {
-      if (ann.category === 'Cartes') {
-        if (ann.title.includes('Pokémon')) {
-          await prisma.announcement.update({
-            where: { id: ann.id },
-            data: { collectionId: pokemonCollection.id },
-          });
-        } else if (ann.title.includes('Magic')) {
-          await prisma.announcement.update({
-            where: { id: ann.id },
-            data: { collectionId: magicCollection.id },
-          });
-        } else {
-          await prisma.announcement.update({
-            where: { id: ann.id },
-            data: { collectionId: otherCardGamesCollection.id },
-          });
-        }
+      if (ann.title.includes('VMAX') || ann.title.includes('Rainbow')) {
+        await prisma.announcement.update({ where: { id: ann.id }, data: { collectionId: vmaxCollection.id } });
+      } else if (ann.title.includes('Illustrateur') || ann.title.includes('Pikachu')) {
+        await prisma.announcement.update({ where: { id: ann.id }, data: { collectionId: illustrateurCollection.id } });
+      } else {
+        await prisma.announcement.update({ where: { id: ann.id }, data: { collectionId: vintage1erEdCollection.id } });
       }
     }
 
@@ -516,7 +480,7 @@ async function main() {
         conversationId: conversation.id,
         senderId: buyer1.id,
         receiverId: seller1.id,
-        content: 'Bonjour ! Je suis très intéressé par cette annonce. Pouvez-vous me donner plus de détails sur l\'état de l\'article ?',
+        content: 'Bonjour ! Je suis très intéressé par votre Charizard Holographique 1ère édition. Est-ce que la carte a été gradée PSA ? Et est-il possible d\'avoir des photos supplémentaires sous différents angles ?',
       },
     });
 
@@ -525,7 +489,7 @@ async function main() {
         conversationId: conversation.id,
         senderId: seller1.id,
         receiverId: buyer1.id,
-        content: 'Bonjour ! L\'article est en excellent état, comme décrit dans l\'annonce. Je peux envoyer des photos supplémentaires si vous le souhaitez.',
+        content: 'Bonjour Sophie ! La carte n\'a pas encore été gradée PSA mais elle est en excellent état Near Mint. Centering 60/40 environ, pas de rayures sur le holo. Je vous envoie des photos macro ce soir. Le prix est ferme étant donné la rareté.',
       },
     });
 
@@ -535,13 +499,14 @@ async function main() {
   console.log('✨ Seed terminé avec succès!');
   console.log('\n📋 Comptes de test créés:');
   console.log('   Admin: admin@collector.shop / password123');
-  console.log('   Vendeur 1: vendeur1@collector.shop / password123 (Timbres - 3 collections)');
-  console.log('   Vendeur 2: vendeur2@collector.shop / password123 (Pièces - 3 collections)');
-  console.log('   Vendeur 3: vendeur3@collector.shop / password123 (Cartes - 3 collections)');
+  console.log('   Vendeur 1: vendeur1@collector.shop / password123 (Base Set & Neo - 3 collections)');
+  console.log('   Vendeur 2: vendeur2@collector.shop / password123 (GX / EX Full Art - 3 collections)');
+  console.log('   Vendeur 3: vendeur3@collector.shop / password123 (VMAX / Vintage 1ère Éd. - 3 collections)');
   console.log('   Acheteur 1: acheteur1@collector.shop / password123');
   console.log('   Acheteur 2: acheteur2@collector.shop / password123');
-  console.log('\n📚 Collections créées: 9 collections (3 par vendeur) avec articles assignés');
-  console.log('💬 Messagerie test: Une conversation a été créée entre acheteur1 et vendeur1');
+  console.log('\n🃏 12 cartes Pokémon rares créées (images CDN officiel PokéTCG)');
+  console.log('📚 9 collections créées (3 par vendeur) avec cartes assignées');
+  console.log('💬 Messagerie test: Conversation entre Sophie et Jean à propos du Charizard 1ère édition');
   console.log('\n🔗 Routes disponibles:');
   console.log('   GET  /api/collections/shop/:shopId         - Lister les collections d\'une boutique');
   console.log('   GET  /api/collections/:collectionId        - Détails d\'une collection avec articles');
