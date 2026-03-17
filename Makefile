@@ -1,7 +1,7 @@
 # Makefile - Collector.shop
 # Simplifie les opérations courantes du projet
 
-.PHONY: help install dev build test clean docker-up docker-down docker-restart logs seed migrate lint format audit k8s-start k8s-stop k8s-restart k8s-status k8s-logs k8s-urls k8s-clean jenkins-build jenkins-start jenkins-stop jenkins-restart jenkins-logs jenkins-open jenkins-clean
+.PHONY: help install dev build test clean docker-up docker-down docker-restart logs seed migrate lint format audit k8s-start k8s-stop k8s-restart k8s-status k8s-logs k8s-urls k8s-clean jenkins-build jenkins-start jenkins-stop jenkins-restart jenkins-logs jenkins-open jenkins-clean jenkins-status argocd-install argocd-open argocd-password argocd-status argocd-sync argocd-history argocd-rollback argocd-app-delete argocd-clean netdata-install netdata-open netdata-status netdata-logs netdata-clean infra-up infra-down infra-status
 
 # Couleurs pour l'affichage
 BLUE := \033[0;34m
@@ -604,6 +604,177 @@ k8s-info: ## Affiche les informations du cluster Minikube
 	@echo ""
 	@echo "$(YELLOW)IP Minikube:$(NC)"
 	@minikube ip
+
+##@ ArgoCD (GitOps CD)
+
+argocd-install: ## Installe ArgoCD sur Minikube (namespace argocd)
+	@echo "$(BLUE)🚀 Installation d'ArgoCD sur Minikube...$(NC)"
+	@kubectl apply -f k8s/argocd/namespace.yaml
+	@kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+	@echo "$(YELLOW)⏳ Attente du démarrage d'ArgoCD (~2 min)...$(NC)"
+	@kubectl wait --for=condition=available --timeout=180s deployment/argocd-server -n argocd
+	@echo "$(BLUE)Exposition du serveur ArgoCD en NodePort 30080...$(NC)"
+	@kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort", "ports": [{"port": 443, "targetPort": 8080, "nodePort": 30080, "protocol": "TCP"}]}}'
+	@echo "$(BLUE)Application du projet ArgoCD...$(NC)"
+	@kubectl apply -f k8s/argocd/project.yaml
+	@kubectl apply -f k8s/argocd/application.yaml
+	@kubectl apply -f k8s/argocd/jenkins-serviceaccount.yaml
+	@echo ""
+	@echo "$(GREEN)✅ ArgoCD installé$(NC)"
+	@echo "$(YELLOW)🌐 Interface : http://$(shell minikube ip):30080$(NC)"
+	@echo "$(YELLOW)🔑 Mot de passe admin : make argocd-password$(NC)"
+
+argocd-password: ## Affiche le mot de passe initial du compte admin ArgoCD
+	@echo "$(BLUE)🔑 Mot de passe ArgoCD admin :$(NC)"
+	@kubectl -n argocd get secret argocd-initial-admin-secret \
+		-o jsonpath="{.data.password}" | base64 -d && echo
+
+argocd-open: ## Ouvre l'interface ArgoCD dans le navigateur
+	@echo "$(BLUE)🌐 Ouverture d'ArgoCD...$(NC)"
+	@xdg-open "http://$(shell minikube ip):30080" 2>/dev/null \
+		|| open "http://$(shell minikube ip):30080" 2>/dev/null \
+		|| echo "$(YELLOW)Ouvrez http://$(shell minikube ip):30080$(NC)"
+
+argocd-status: ## Affiche le statut de l'application ArgoCD
+	@echo "$(BLUE)📊 Statut ArgoCD — collector-shop$(NC)"
+	@kubectl get applications -n argocd
+	@echo ""
+	@kubectl get pods -n argocd
+
+argocd-sync: ## Déclenche manuellement une synchronisation ArgoCD
+	@echo "$(BLUE)🔄 Synchronisation ArgoCD...$(NC)"
+	@argocd app sync collector-shop --insecure --grpc-web \
+		--server "$(shell minikube ip):30080" 2>/dev/null \
+		|| kubectl patch application collector-shop -n argocd \
+			--type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}' \
+		|| echo "$(YELLOW)Utilisez l'interface web : http://$(shell minikube ip):30080$(NC)"
+
+argocd-history: ## Affiche l'historique des déploiements ArgoCD
+	@echo "$(BLUE)📋 Historique des déploiements$(NC)"
+	@argocd app history collector-shop --insecure \
+		--server "$(shell minikube ip):30080" 2>/dev/null \
+		|| kubectl describe application collector-shop -n argocd | grep -A20 "Operation State"
+
+argocd-rollback: ## Rollback ArgoCD vers la version précédente (usage: make argocd-rollback REV=1)
+	@echo "$(RED)⏪ Rollback ArgoCD vers la révision $(REV)...$(NC)"
+	@argocd app rollback collector-shop $(REV) --insecure \
+		--server "$(shell minikube ip):30080" 2>/dev/null \
+		|| echo "$(YELLOW)Spécifiez REV : make argocd-rollback REV=<numéro>$(NC)"
+
+argocd-clean: ## Supprime ArgoCD du cluster (⚠️ IRRÉVERSIBLE)
+	@echo "$(RED)⚠️  Suppression d'ArgoCD...$(NC)"
+	@kubectl delete -f k8s/argocd/application.yaml 2>/dev/null || true
+	@kubectl delete -f k8s/argocd/project.yaml 2>/dev/null || true
+	@kubectl delete -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml 2>/dev/null || true
+	@kubectl delete namespace argocd 2>/dev/null || true
+	@echo "$(GREEN)✅ ArgoCD supprimé$(NC)"
+
+##@ Netdata (Monitoring — 100% local, sans API key)
+
+netdata-install: ## Déploie Netdata sur Minikube (Parent + DaemonSet children)
+	@echo "$(BLUE)📊 Déploiement Netdata...$(NC)"
+	@kubectl apply -k k8s/monitoring/netdata/
+	@echo "$(YELLOW)⏳ Attente du démarrage du parent Netdata...$(NC)"
+	@kubectl wait --for=condition=available --timeout=120s deployment/netdata-parent -n monitoring
+	@kubectl wait --for=condition=ready pod -l app=netdata,role=child -n monitoring --timeout=120s || true
+	@echo ""
+	@echo "$(GREEN)✅ Netdata déployé$(NC)"
+	@echo "$(YELLOW)📊 Dashboard : http://$(shell minikube ip):30199$(NC)"
+	@echo "$(YELLOW)  → Métriques : CPU, mémoire, réseau, conteneurs, Kubernetes$(NC)"
+	@echo "$(YELLOW)  → Intégrations auto : PostgreSQL, Redis$(NC)"
+
+netdata-open: ## Ouvre le dashboard Netdata dans le navigateur
+	@echo "$(BLUE)🌐 Ouverture de Netdata...$(NC)"
+	@xdg-open "http://$(shell minikube ip):30199" 2>/dev/null \
+		|| open "http://$(shell minikube ip):30199" 2>/dev/null \
+		|| echo "$(YELLOW)Ouvrez http://$(shell minikube ip):30199$(NC)"
+
+netdata-status: ## Affiche le statut des pods Netdata
+	@echo "$(BLUE)📊 Statut Netdata$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Parent :$(NC)"
+	@kubectl get pods -n monitoring -l app=netdata,role=parent -o wide
+	@echo ""
+	@echo "$(YELLOW)Children (DaemonSet) :$(NC)"
+	@kubectl get pods -n monitoring -l app=netdata,role=child -o wide
+	@echo ""
+	@echo "$(YELLOW)Services :$(NC)"
+	@kubectl get svc -n monitoring -l app=netdata
+
+netdata-logs: ## Affiche les logs Netdata en temps réel (parent)
+	@echo "$(BLUE)📋 Logs Netdata Parent$(NC)"
+	@kubectl logs -n monitoring -l app=netdata,role=parent --tail=100 -f
+
+netdata-clean: ## Supprime Netdata du cluster (⚠️ IRRÉVERSIBLE)
+	@echo "$(RED)⚠️  Suppression de Netdata...$(NC)"
+	@kubectl delete -k k8s/monitoring/netdata/ 2>/dev/null || true
+	@echo "$(GREEN)✅ Netdata supprimé$(NC)"
+
+##@ Infrastructure complète (Minikube + ArgoCD + Netdata)
+
+infra-up: ## Lance toute l'infrastructure (Minikube + ArgoCD + Netdata + App)
+	@echo "$(BLUE)🚀 Démarrage de l'infrastructure complète...$(NC)"
+	@echo ""
+	@echo "$(YELLOW)1/4 — Démarrage Minikube$(NC)"
+	@minikube start --memory=6144 --cpus=4 --disk-size=40g --addons=metrics-server,ingress
+	@echo ""
+	@echo "$(YELLOW)2/4 — Build des images dans Minikube$(NC)"
+	@eval $$(minikube docker-env) \
+		&& docker build -t collector-shop-backend:latest -f backend/Dockerfile backend/ \
+		&& docker build -t collector-shop-frontend:latest -f frontend/Dockerfile .
+	@echo ""
+	@echo "$(YELLOW)3/4 — Déploiement de l'application via Kustomize$(NC)"
+	@kubectl apply -k k8s/overlays/minikube/
+	@echo ""
+	@echo "$(YELLOW)4/4 — Installation ArgoCD$(NC)"
+	@$(MAKE) argocd-install
+	@echo ""
+	@echo "$(GREEN)════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(GREEN)  ✅  Infrastructure prête                              ║$(NC)"
+	@echo "$(GREEN)════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(YELLOW)📊 ArgoCD    : http://$(shell minikube ip):30080$(NC)"
+	@echo "$(YELLOW)🌐 Backend   : http://$(shell minikube ip):30000$(NC)"
+	@echo "$(YELLOW)🌐 Frontend  : http://$(shell minikube ip):30001$(NC)"
+	@echo "$(YELLOW)📈 Grafana   : http://$(shell minikube ip):30300$(NC)"
+	@echo ""
+	@echo "$(YELLOW)🔑 ArgoCD admin password : make argocd-password$(NC)"
+	@echo "$(YELLOW)📊 Netdata               : make netdata-install  (pas de clé API requise)$(NC)"
+
+infra-down: ## Arrête et nettoie toute l'infrastructure
+	@echo "$(RED)⚠️  Arrêt de l'infrastructure...$(NC)"
+	@$(MAKE) argocd-clean
+	@$(MAKE) netdata-clean
+	@kubectl delete -k k8s/overlays/minikube/ 2>/dev/null || true
+	@minikube stop
+	@echo "$(GREEN)✅ Infrastructure arrêtée$(NC)"
+
+infra-status: ## Affiche le statut complet de l'infrastructure
+	@echo "$(BLUE)════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  STATUT INFRASTRUCTURE — COLLECTOR.SHOP               $(NC)"
+	@echo "$(BLUE)════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "$(YELLOW)🔷 Minikube :$(NC)"
+	@minikube status 2>/dev/null || echo "  Arrêté"
+	@echo ""
+	@echo "$(YELLOW)🐳 Pods collector-shop :$(NC)"
+	@kubectl get pods -n collector-shop -o wide 2>/dev/null || echo "  Namespace non disponible"
+	@echo ""
+	@echo "$(YELLOW)📦 ArgoCD :$(NC)"
+	@kubectl get applications -n argocd 2>/dev/null || echo "  ArgoCD non installé"
+	@echo ""
+	@echo "$(YELLOW)📊 Netdata :$(NC)"
+	@kubectl get pods -n monitoring -l app=netdata 2>/dev/null || echo "  Non installé"
+	@echo "$(YELLOW)  Dashboard : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):30199$(NC)"
+	@echo ""
+	@echo "$(YELLOW)📈 HPA :$(NC)"
+	@kubectl get hpa -n collector-shop 2>/dev/null || echo "  Pas de HPA"
+	@echo ""
+	@echo "$(YELLOW)🌐 URLs :$(NC)"
+	@echo "  ArgoCD   : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):30080"
+	@echo "  Backend  : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):30000"
+	@echo "  Frontend : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):30001"
+	@echo "  Grafana  : http://$(shell minikube ip 2>/dev/null || echo '192.168.49.2'):30300"
 
 # Commande par défaut
 .DEFAULT_GOAL := help

@@ -1,0 +1,125 @@
+---
+# Configuration Netdata — Parent (collecteur central)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: netdata-parent-config
+  namespace: monitoring
+  labels:
+    app: netdata
+    role: parent
+data:
+  netdata.conf: |
+    [global]
+      hostname = netdata-parent
+      history = 3600
+      update every = 1
+
+    [web]
+      bind to = 0.0.0.0:19999
+      allow connections from = localhost 10.* 192.168.*
+      allow dashboard from = localhost 10.* 192.168.*
+      enable gzip compression = yes
+
+    [plugins]
+      # Le parent ne collecte pas de métriques locales — il reçoit des children
+      proc = no
+      diskspace = no
+      cgroups = no
+      tc = no
+      idlejitter = no
+      python.d = no
+      go.d = no
+
+    [logs]
+      error log = /var/log/netdata/error.log
+      access log = /var/log/netdata/access.log
+
+  stream.conf: |
+    # Parent : accepte les connexions des children
+    [stream]
+      enabled = yes
+      default memory mode = ram
+      health enabled by default = auto
+      allow from = *
+
+---
+# Configuration Netdata — Child (DaemonSet par node)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: netdata-child-config
+  namespace: monitoring
+  labels:
+    app: netdata
+    role: child
+data:
+  netdata.conf: |
+    [global]
+      hostname = ${NETDATA_HOSTNAME}
+      history = 300
+      update every = 1
+      memory mode = ram
+
+    [plugins]
+      proc = yes
+      diskspace = yes
+      cgroups = yes
+      tc = yes
+      python.d = no
+      go.d = yes
+
+    [logs]
+      error log = /var/log/netdata/error.log
+      access log = none
+
+  stream.conf: |
+    # Child : envoie les métriques au parent
+    [stream]
+      enabled = yes
+      destination = netdata-parent.monitoring.svc.cluster.local:19999
+      api key = NETDATA-COLLECTOR-SHOP-KEY-2026
+      timeout seconds = 60
+      default port = 19999
+      send charts matching = *
+
+  go.d/k8s_state.conf: |
+    # Intégration Kubernetes State — métriques pods/deployments/nodes
+    jobs:
+      - name: minikube
+        url: http://localhost:19999/api/v1/allmetrics?format=prometheus
+
+  go.d/postgres.conf: |
+    # Intégration PostgreSQL — détectée automatiquement via DNS interne
+    jobs:
+      - name: collector-shop-db
+        dsn: "postgresql://collector:collector_password@postgres.collector-shop.svc.cluster.local:5432/collector_shop?connect_timeout=5"
+        collect_replication_metrics_interval: 30
+
+  go.d/redis.conf: |
+    # Intégration Redis
+    jobs:
+      - name: collector-shop-cache
+        address: redis://redis.collector-shop.svc.cluster.local:6379
+
+  health.d/kubernetes.conf: |
+    # Alertes Kubernetes
+    alarm: pod_not_running
+    on: k8s_state.pod_status
+    lookup: max -1m unaligned foreach *
+    units: state
+    every: 30s
+    warn: $this != 1
+    crit: $this == 0
+    info: pod n'est pas en cours d'exécution
+    to: sysadmin
+
+    alarm: high_cpu_usage
+    on: cgroups.cpu_limit
+    lookup: average -1m
+    units: %
+    every: 30s
+    warn: $this > 80
+    crit: $this > 95
+    info: CPU élevé dans un conteneur
+    to: sysadmin

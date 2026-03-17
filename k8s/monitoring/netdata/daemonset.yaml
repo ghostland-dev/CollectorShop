@@ -1,0 +1,152 @@
+---
+# Netdata Child — DaemonSet (un agent par node Minikube)
+# Collecte : CPU, mémoire, réseau, disque, cgroups/conteneurs, Kubernetes
+# Envoie tout au Parent via streaming
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: netdata-child
+  namespace: monitoring
+  labels:
+    app: netdata
+    role: child
+    app.kubernetes.io/part-of: collector-shop-infra
+spec:
+  selector:
+    matchLabels:
+      app: netdata
+      role: child
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: netdata
+        role: child
+      annotations:
+        # Annotations autodiscovery pour les pods du namespace collector-shop
+        prometheus.io/scrape: "false"
+    spec:
+      serviceAccountName: netdata
+      # Tolération : déployer même sur les nodes control-plane
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+      # Le child doit connaître le nom du node
+      hostNetwork: false
+      hostPID: true    # Nécessaire pour collecter les métriques de processus
+      dnsPolicy: ClusterFirstWithHostNet
+
+      containers:
+        - name: netdata
+          image: netdata/netdata:stable
+          imagePullPolicy: IfNotPresent
+
+          env:
+            # Nom d'hôte = nom du node Kubernetes
+            - name: NETDATA_HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: NETDATA_ROLE
+              value: "child"
+            # Pas de connexion au cloud Netdata (mode local uniquement)
+            - name: DO_NOT_TRACK
+              value: "1"
+
+          ports:
+            - containerPort: 19999
+              name: http
+
+          # ─── Capacités requises pour la collecte complète ────────────────
+          securityContext:
+            capabilities:
+              add:
+                - SYS_PTRACE    # Lecture des métriques de processus
+                - SYS_ADMIN     # Accès aux cgroups
+            privileged: true    # Requis pour /proc + /sys complets
+
+          # ─── Volumes montés ──────────────────────────────────────────────
+          volumeMounts:
+            # Configuration
+            - name: child-config
+              mountPath: /etc/netdata/netdata.conf
+              subPath: netdata.conf
+            - name: child-config
+              mountPath: /etc/netdata/stream.conf
+              subPath: stream.conf
+            - name: child-config
+              mountPath: /etc/netdata/go.d/k8s_state.conf
+              subPath: go.d/k8s_state.conf
+            - name: child-config
+              mountPath: /etc/netdata/go.d/postgres.conf
+              subPath: go.d/postgres.conf
+            - name: child-config
+              mountPath: /etc/netdata/go.d/redis.conf
+              subPath: go.d/redis.conf
+            - name: child-config
+              mountPath: /etc/netdata/health.d/kubernetes.conf
+              subPath: health.d/kubernetes.conf
+            # Filesystem host (métriques node)
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+            - name: root
+              mountPath: /host/root
+              readOnly: true
+              mountPropagation: HostToContainer
+            # Docker (métriques conteneurs)
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+            # Logs des pods (collecte de logs optionnelle)
+            - name: os-release
+              mountPath: /host/etc/os-release
+              readOnly: true
+
+          livenessProbe:
+            httpGet:
+              path: /api/v1/info
+              port: 19999
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/info
+              port: 19999
+            initialDelaySeconds: 15
+            periodSeconds: 10
+
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "300m"
+
+      # ─── Volumes ──────────────────────────────────────────────────────────
+      volumes:
+        - name: child-config
+          configMap:
+            name: netdata-child-config
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: root
+          hostPath:
+            path: /
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+        - name: os-release
+          hostPath:
+            path: /etc/os-release

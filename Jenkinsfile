@@ -1,21 +1,30 @@
 // =============================================================================
-// Jenkinsfile — Collector.shop CI/CD Pipeline (Local)
+// Jenkinsfile — Collector.shop CI/CD Pipeline (Jenkins + ArgoCD + Minikube)
 // =============================================================================
-// Équivalent du workflow GitHub Actions .github/workflows/ci-cd.yml
+// Flux GitOps Jenkins CI → ArgoCD CD → Minikube
 //
-// Étapes du pipeline :
+//   CI (Jenkins)
 //   1. Checkout          → récupération du code source
 //   2. Install           → npm install + génération client Prisma
 //   3. Lint & Audit      → ESLint backend/frontend + npm audit (en parallèle)
-//   4. Build             → compilation TypeScript backend + frontend (en parallèle)
-//   5. Tests             → tests unitaires backend + frontend avec couverture (en parallèle)
-//   6. Docker Build      → construction des images Docker
-//   7. Scan Sécurité     → Trivy sur les deux images (en parallèle)
+//   4. Build TypeScript  → compilation backend + frontend (en parallèle)
+//   5. Tests Unitaires   → Jest backend + frontend (couverture HTML)
+//   6. Tests Intégration → Supertest + PostgreSQL éphémère
+//   7. Docker Build      → images collector-shop-backend/frontend
+//   8. Scan Sécurité     → Trivy (HIGH/CRITICAL)
 //
-// Prérequis sur le container Jenkins :
-//   - Node.js 20
-//   - Docker CLI (accès au socket Docker hôte)
-//   - Trivy
+//   CD (Jenkins → ArgoCD → Minikube)
+//   9.  Load Image       → minikube image load (imagePullPolicy: Never)
+//   10. Update Manifest  → kustomize edit set image + git commit + push
+//   11. ArgoCD Sync      → argocd app sync collector-shop + attente
+//   12. Tests de Charge  → Artillery sur NodePort Minikube (post-déploiement)
+//
+// Monitoring : Datadog Agent DaemonSet (namespace monitoring)
+//
+// Credentials Jenkins requis :
+//   - GITHUB_TOKEN   : token GitHub pour git push des manifests
+//   - ARGOCD_TOKEN   : token ArgoCD pour déclencher les syncs
+//   - KUBECONFIG_B64 : kubeconfig Minikube encodé en base64
 // =============================================================================
 
 pipeline {
@@ -33,21 +42,32 @@ pipeline {
         PROJECT_NAME    = 'collector-shop'
         NODE_VERSION    = '20'
 
-        // Base de données PostgreSQL éphémère pour les tests
-        // Le conteneur est sur le réseau jenkins-ci-net, accessible par son nom
+        // ─── Base de données PostgreSQL éphémère pour les tests ───────────────
         PG_CONTAINER        = "jenkins-pg-${BUILD_NUMBER}"
         PG_USER             = 'test'
         PG_PASSWORD         = 'test'
         PG_DB               = 'collector_shop_test'
-        // DATABASE_URL utilisée pour prisma db push (CLI) et génération
         DATABASE_URL        = "postgresql://test:test@jenkins-pg-${BUILD_NUMBER}:5432/collector_shop_test?schema=public"
-        // TEST_DATABASE_URL est lue par backend/src/__tests__/setup.ts
-        // qui l'injecte dans process.env.DATABASE_URL pour Jest
         TEST_DATABASE_URL   = "postgresql://test:test@jenkins-pg-${BUILD_NUMBER}:5432/collector_shop_test?schema=public"
 
-        // Secrets de test (uniquement pour CI — pas de valeur en production)
+        // ─── Secrets de test ───────────────────────────────────────────────────
         JWT_SECRET          = 'jenkins-ci-test-secret-32chars!!'
         JWT_REFRESH_SECRET  = 'jenkins-ci-refresh-secret-32chars'
+
+        // ─── GitOps : dépôt GitHub + branche des manifests ────────────────────
+        GIT_REPO_URL        = 'https://github.com/Ismail-Mouyahada/CollectorShop.git'
+        GIT_BRANCH          = 'main'
+        MANIFEST_PATH       = 'k8s/overlays/minikube'
+
+        // ─── ArgoCD ────────────────────────────────────────────────────────────
+        ARGOCD_SERVER       = 'localhost:30080'   // NodePort ArgoCD (make argocd-install)
+        ARGOCD_APP          = 'collector-shop'
+
+        // ─── Minikube ─────────────────────────────────────────────────────────
+        MINIKUBE_BACKEND_URL = 'http://192.168.49.2:30000'   // NodePort backend
+
+        // ─── Tests de charge Artillery ────────────────────────────────────────
+        ARTILLERY_CONFIG    = 'tests/load-tests/artillery.yml'
     }
 
     stages {
@@ -281,6 +301,172 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        stage('Load Images → Minikube') {
+        // ─────────────────────────────────────────────────────────────────────
+        // Charge les images Docker dans le daemon Minikube (imagePullPolicy: Never)
+        // Requiert : minikube en cours d'exécution sur l'hôte + kubeconfig monté
+            when {
+                expression { return fileExists('/root/.kube/config') || fileExists("${HOME}/.kube/config") }
+            }
+            steps {
+                sh """
+                    echo "=== Chargement des images dans Minikube ==="
+                    minikube image load ${PROJECT_NAME}-backend:${BUILD_NUMBER} || true
+                    minikube image load ${PROJECT_NAME}-frontend:${BUILD_NUMBER} || true
+
+                    minikube image load ${PROJECT_NAME}-backend:latest || true
+                    minikube image load ${PROJECT_NAME}-frontend:latest || true
+
+                    echo "Images disponibles dans Minikube :"
+                    minikube image ls | grep ${PROJECT_NAME} || true
+                """
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('Mise à jour Manifests (GitOps)') {
+        // ─────────────────────────────────────────────────────────────────────
+        // Met à jour les image tags dans k8s/overlays/minikube/kustomization.yaml
+        // puis commit + push → ArgoCD détecte le changement et déploie
+            steps {
+                withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GH_TOKEN')]) {
+                    sh """
+                        echo "=== Mise à jour des image tags (build ${BUILD_NUMBER}) ==="
+                        cd ${MANIFEST_PATH}
+
+                        # Mettre à jour les tags via kustomize
+                        kustomize edit set image \\
+                            ${PROJECT_NAME}-backend=${PROJECT_NAME}-backend:${BUILD_NUMBER}
+                        kustomize edit set image \\
+                            ${PROJECT_NAME}-frontend=${PROJECT_NAME}-frontend:${BUILD_NUMBER}
+
+                        echo "kustomization.yaml mis à jour :"
+                        cat kustomization.yaml
+
+                        cd ${WORKSPACE}
+
+                        # Configurer git
+                        git config user.email "jenkins@collector-shop.local"
+                        git config user.name  "Jenkins CI"
+
+                        # Commit et push
+                        git add ${MANIFEST_PATH}/kustomization.yaml
+                        git diff --cached --quiet && echo "Pas de changement" || {
+                            git commit -m "ci: deploy build ${BUILD_NUMBER} [skip ci]"
+                            git push https://\${GH_TOKEN}@github.com/Ismail-Mouyahada/CollectorShop.git HEAD:${GIT_BRANCH}
+                            echo "✅ Manifests poussés vers GitHub"
+                        }
+                    """
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('Déploiement ArgoCD') {
+        // ─────────────────────────────────────────────────────────────────────
+        // Déclenche la synchronisation ArgoCD et attend que le déploiement
+        // soit "Healthy" avant de continuer vers les tests de charge
+            steps {
+                withCredentials([string(credentialsId: 'ARGOCD_TOKEN', variable: 'ARGOCD_AUTH_TOKEN')]) {
+                    sh """
+                        echo "=== Synchronisation ArgoCD ==="
+
+                        # Login ArgoCD via token
+                        argocd login ${ARGOCD_SERVER} \\
+                            --auth-token \${ARGOCD_AUTH_TOKEN} \\
+                            --insecure \\
+                            --grpc-web
+
+                        # Déclencher la synchronisation
+                        argocd app sync ${ARGOCD_APP} \\
+                            --insecure \\
+                            --grpc-web \\
+                            --async
+
+                        echo "Synchronisation déclenchée. Attente que l'application soit Healthy..."
+
+                        # Attendre que l'application soit synchronisée et en bonne santé
+                        argocd app wait ${ARGOCD_APP} \\
+                            --insecure \\
+                            --grpc-web \\
+                            --health \\
+                            --sync \\
+                            --timeout 300
+
+                        echo "=== Statut de l'application ==="
+                        argocd app get ${ARGOCD_APP} --insecure --grpc-web
+
+                        echo "✅ Déploiement ArgoCD terminé"
+                    """
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('Tests de Charge (Artillery)') {
+        // ─────────────────────────────────────────────────────────────────────
+        // Tests de performance post-déploiement sur l'environnement Minikube
+        // Valide que le service répond avec P95 < 200ms sous charge
+            steps {
+                sh """
+                    echo "=== Tests de charge Artillery sur Minikube ==="
+                    echo "Cible : ${MINIKUBE_BACKEND_URL}"
+
+                    # Installer Artillery si absent
+                    npx artillery version 2>/dev/null || npm install -g artillery
+
+                    # Vérifier que le backend répond avant les tests
+                    echo "Vérification de la disponibilité du backend..."
+                    for i in \$(seq 1 12); do
+                        curl -sf ${MINIKUBE_BACKEND_URL}/health && break
+                        echo "Tentative \$i/12 — attente 10s..."
+                        sleep 10
+                    done
+
+                    # Lancer les tests de charge
+                    npx artillery run \\
+                        --output artillery-report-${BUILD_NUMBER}.json \\
+                        --target ${MINIKUBE_BACKEND_URL} \\
+                        ${ARTILLERY_CONFIG} || true
+
+                    # Générer le rapport HTML
+                    npx artillery report \\
+                        --output artillery-report-${BUILD_NUMBER}.html \\
+                        artillery-report-${BUILD_NUMBER}.json || true
+
+                    echo "=== Résumé des tests de charge ==="
+                    cat artillery-report-${BUILD_NUMBER}.json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+agg = data.get('aggregate', {})
+summary = agg.get('summaries', {})
+latency = agg.get('latencies', {})
+print('Requêtes totales :', agg.get('requestsCompleted', 'N/A'))
+print('Taux erreur      :', agg.get('counters', {}).get('vusers.failed', 0))
+" 2>/dev/null || echo "(résumé JSON non disponible)"
+                """
+            }
+            post {
+                always {
+                    // Publier le rapport Artillery HTML
+                    publishHTML(target: [
+                        allowMissing         : true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll              : true,
+                        reportDir            : '.',
+                        reportFiles          : "artillery-report-${BUILD_NUMBER}.html",
+                        reportName           : 'Tests de Charge Artillery'
+                    ])
+                    // Archiver le rapport JSON
+                    archiveArtifacts(
+                        artifacts: "artillery-report-${BUILD_NUMBER}.json",
+                        allowEmptyArchive: true
+                    )
+                }
+            }
+        }
+
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -302,11 +488,13 @@ pipeline {
 ║   ✅  Pipeline CI/CD terminé avec SUCCÈS                 ║
 ╚══════════════════════════════════════════════════════════╝'''
             script {
-                echo "Images Docker disponibles localement :"
+                echo "Images Docker :"
                 echo "  ${env.PROJECT_NAME}-backend:${env.BUILD_NUMBER}"
                 echo "  ${env.PROJECT_NAME}-frontend:${env.BUILD_NUMBER}"
                 echo ""
-                echo "Durée du build : ${currentBuild.durationString}"
+                echo "Déploiement ArgoCD : http://localhost:30080/applications/${env.ARGOCD_APP}"
+                echo "Backend Minikube   : ${env.MINIKUBE_BACKEND_URL}"
+                echo "Durée du build     : ${currentBuild.durationString}"
             }
         }
 

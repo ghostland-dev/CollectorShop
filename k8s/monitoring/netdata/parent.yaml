@@ -1,0 +1,106 @@
+---
+# Netdata Parent — Collecteur central (reçoit les métriques de tous les children)
+# Accessible via NodePort 30199 → http://<minikube ip>:30199
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netdata-parent
+  namespace: monitoring
+  labels:
+    app: netdata
+    role: parent
+    app.kubernetes.io/part-of: collector-shop-infra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: netdata
+      role: parent
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: netdata
+        role: parent
+    spec:
+      serviceAccountName: netdata
+      securityContext:
+        runAsUser: 0
+      containers:
+        - name: netdata
+          image: netdata/netdata:stable
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NETDATA_CLAIM_TOKEN
+              value: ""
+            - name: NETDATA_HOSTNAME
+              value: "netdata-parent"
+            - name: NETDATA_ROLE
+              value: "parent"
+          ports:
+            - containerPort: 19999
+              name: http
+          volumeMounts:
+            - name: parent-config
+              mountPath: /etc/netdata/netdata.conf
+              subPath: netdata.conf
+            - name: parent-config
+              mountPath: /etc/netdata/stream.conf
+              subPath: stream.conf
+            - name: netdata-parent-lib
+              mountPath: /var/lib/netdata
+            - name: netdata-parent-cache
+              mountPath: /var/cache/netdata
+          livenessProbe:
+            httpGet:
+              path: /api/v1/info
+              port: 19999
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /api/v1/info
+              port: 19999
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "300m"
+      volumes:
+        - name: parent-config
+          configMap:
+            name: netdata-parent-config
+        - name: netdata-parent-lib
+          emptyDir: {}
+        - name: netdata-parent-cache
+          emptyDir: {}
+---
+# Service Parent — NodePort pour accès externe au dashboard
+apiVersion: v1
+kind: Service
+metadata:
+  name: netdata-parent
+  namespace: monitoring
+  labels:
+    app: netdata
+    role: parent
+  annotations:
+    # Visible dans make infra-status
+    service.description: "Netdata Dashboard — http://<minikube-ip>:30199"
+spec:
+  type: NodePort
+  selector:
+    app: netdata
+    role: parent
+  ports:
+    - name: http
+      port: 19999
+      targetPort: 19999
+      nodePort: 30199
+      protocol: TCP
