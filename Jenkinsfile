@@ -35,11 +35,15 @@ pipeline {
 
         // Base de données PostgreSQL éphémère pour les tests
         // Le conteneur est sur le réseau jenkins-ci-net, accessible par son nom
-        PG_CONTAINER    = "jenkins-pg-${BUILD_NUMBER}"
-        PG_USER         = 'test'
-        PG_PASSWORD     = 'test'
-        PG_DB           = 'collector_shop_test'
-        DATABASE_URL    = "postgresql://test:test@jenkins-pg-${BUILD_NUMBER}:5432/collector_shop_test?schema=public"
+        PG_CONTAINER        = "jenkins-pg-${BUILD_NUMBER}"
+        PG_USER             = 'test'
+        PG_PASSWORD         = 'test'
+        PG_DB               = 'collector_shop_test'
+        // DATABASE_URL utilisée pour prisma db push (CLI) et génération
+        DATABASE_URL        = "postgresql://test:test@jenkins-pg-${BUILD_NUMBER}:5432/collector_shop_test?schema=public"
+        // TEST_DATABASE_URL est lue par backend/src/__tests__/setup.ts
+        // qui l'injecte dans process.env.DATABASE_URL pour Jest
+        TEST_DATABASE_URL   = "postgresql://test:test@jenkins-pg-${BUILD_NUMBER}:5432/collector_shop_test?schema=public"
 
         // Secrets de test (uniquement pour CI — pas de valeur en production)
         JWT_SECRET          = 'jenkins-ci-test-secret-32chars!!'
