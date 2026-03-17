@@ -8,7 +8,7 @@ import {
   Container,
   Alert,
 } from '@mui/material';
-import { CheckCircle, ShoppingBag, Home } from '@mui/icons-material';
+import { CheckCircle, ShoppingBag, Home, Receipt } from '@mui/icons-material';
 export function PaymentSuccessPage() {
   const navigate = useNavigate();
 
@@ -52,6 +52,15 @@ export function PaymentSuccessPage() {
             aria-label="Continuer vos achats"
           >
             Continuer vos achats
+          </Button>
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<Receipt />}
+            onClick={() => navigate('/my-purchases')}
+            aria-label="Voir mes achats"
+          >
+            Voir mes achats
           </Button>
           <Button
             variant="outlined"

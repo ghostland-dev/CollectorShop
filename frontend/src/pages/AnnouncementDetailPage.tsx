@@ -223,7 +223,7 @@ export function AnnouncementDetailPage() {
     mutationFn: () => purchaseService.create({ announcementId: id! }),
     onSuccess: () => {
       showSuccess('Achat créé avec succès !');
-      navigate('/purchases');
+      navigate('/my-purchases');
     },
     onError: (error: unknown) => {
       showError(getErrorMessage(error) || 'Erreur lors de l\'achat');
