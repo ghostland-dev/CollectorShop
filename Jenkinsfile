@@ -82,6 +82,7 @@ pipeline {
                             env.GIT_DEPLOY_BRANCH   = 'staging'
                             env.MINIKUBE_BACKEND_URL  = 'https://api-staging.shopcollector.local'
                             env.MINIKUBE_FRONTEND_URL = 'https://staging.shopcollector.local'
+                            env.GRAFANA_URL           = 'https://grafana-staging.shopcollector.local'
                             break
                         case 'develop':
                             env.MANIFEST_PATH       = 'k8s/overlays/dev'
@@ -89,6 +90,7 @@ pipeline {
                             env.GIT_DEPLOY_BRANCH   = 'develop'
                             env.MINIKUBE_BACKEND_URL  = 'https://api-dev.shopcollector.local'
                             env.MINIKUBE_FRONTEND_URL = 'https://dev.shopcollector.local'
+                            env.GRAFANA_URL           = 'https://grafana-dev.shopcollector.local'
                             break
                         default: // main → production
                             env.MANIFEST_PATH       = 'k8s/overlays/minikube'
@@ -96,6 +98,7 @@ pipeline {
                             env.GIT_DEPLOY_BRANCH   = 'main'
                             env.MINIKUBE_BACKEND_URL  = 'https://api.shopcollector.local'
                             env.MINIKUBE_FRONTEND_URL = 'https://shopcollector.local'
+                            env.GRAFANA_URL           = 'https://grafana.shopcollector.local'
                     }
                     echo "Branch: ${branch} → App: ${env.ARGOCD_APP} | Path: ${env.MANIFEST_PATH}"
                 }
@@ -737,7 +740,7 @@ except Exception as e:
                         [name: '🌐 Application',  value: "[${MINIKUBE_FRONTEND_URL}](${MINIKUBE_FRONTEND_URL})", inline: true],
                         [name: '🔧 API Backend',  value: "[${MINIKUBE_BACKEND_URL}/health](${MINIKUBE_BACKEND_URL}/health)", inline: true],
                         [name: '🚀 ArgoCD',       value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
-                        [name: '📊 Grafana',      value: "[grafana.shopcollector.local](https://grafana.shopcollector.local)", inline: true],
+                        [name: '📊 Grafana',      value: "[${GRAFANA_URL}](${GRAFANA_URL})", inline: true],
                         [name: '📡 Netdata',      value: "[netdata.shopcollector.local](https://netdata.shopcollector.local)", inline: true],
                         [name: '🐙 Gitea',        value: "[gitea.shopcollector.local](https://gitea.shopcollector.local)", inline: true],
                         [name: '🔍 SonarCloud',   value: "[sonarcloud.io](https://sonarcloud.io/project/overview?id=goodfood-apps_collector-shop)", inline: true],
@@ -785,8 +788,8 @@ except Exception as e:
                         [name: '⏱️ Durée',    value: duration,         inline: true],
                         [name: '📋 Logs Jenkins',  value: "[Voir les logs](${BUILD_URL}console)", inline: true],
                         [name: '🚀 ArgoCD',        value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
-                        [name: '🌐 Application',   value: "[shopcollector.local](https://shopcollector.local)", inline: true],
-                        [name: '📊 Grafana',       value: "[grafana.shopcollector.local](https://grafana.shopcollector.local)", inline: true],
+                        [name: '🌐 Application',   value: "[${MINIKUBE_FRONTEND_URL}](${MINIKUBE_FRONTEND_URL})", inline: true],
+                        [name: '📊 Grafana',       value: "[${GRAFANA_URL}](${GRAFANA_URL})", inline: true],
                     ]
                 )
             }
