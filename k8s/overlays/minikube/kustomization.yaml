@@ -12,10 +12,10 @@ resources:
 images:
 - name: collector-shop-backend
   newName: collector-shop-backend
-  newTag: "37"
+  newTag: "38"
 - name: collector-shop-frontend
   newName: collector-shop-frontend
-  newTag: "37"
+  newTag: "38"
 
 # ─── Patches Minikube (NodePort + imagePullPolicy: Never) ───────────────────
 patches:

@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useCartStore } from '../stores/cartStore';
 import { useNotifications } from '../hooks/useNotifications';
 import { LanguageSelector } from './LanguageSelector';
+import { CollectorLogo } from './CollectorLogo';
 
 interface LayoutProps {
   children: ReactNode;
@@ -185,15 +186,14 @@ export function Layout({ children }: LayoutProps) {
       </a>
       <AppBar position="static" role="banner" aria-label="En-tête principal">
         <Toolbar role="toolbar" aria-label="Navigation principale">
-          <Typography
-            variant="h6"
+          <Box
             component={Link}
             to="/"
-            sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit', fontWeight: 'bold' }}
+            sx={{ flexGrow: 1, textDecoration: 'none', display: 'flex', alignItems: 'center' }}
             aria-label="Collector.shop - Accueil"
           >
-            Collector.shop
-          </Typography>
+            <CollectorLogo size={36} showText={true} />
+          </Box>
           {isAuthenticated ? (
             <AuthenticatedMenu
               user={user}
@@ -211,9 +211,21 @@ export function Layout({ children }: LayoutProps) {
       <Container id="main-content" component="main" sx={{ flex: 1, py: 4 }} role="main" tabIndex={-1}>
         {children}
       </Container>
-      <Box component="footer" sx={{ py: 2, textAlign: 'center', bgcolor: 'grey.100' }} role="contentinfo">
-        <Typography variant="body2" color="text.secondary">
-          © 2024 Collector.shop - POC
+      <Box
+        component="footer"
+        sx={{
+          py: 2,
+          textAlign: 'center',
+          background: 'linear-gradient(135deg, #065f46 0%, #047857 100%)',
+          color: 'rgba(255,255,255,0.8)',
+        }}
+        role="contentinfo"
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 0.5 }}>
+          <CollectorLogo size={20} showText={true} />
+        </Box>
+        <Typography variant="caption" sx={{ color: 'rgba(52,211,153,0.8)' }}>
+          © 2026 Collector.shop — POC Bloc 3
         </Typography>
       </Box>
     </Box>
