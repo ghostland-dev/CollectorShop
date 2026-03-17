@@ -27,6 +27,12 @@ export interface Announcement {
     email: string;
     firstName?: string;
     lastName?: string;
+    shop?: {
+      id: string;
+      name: string;
+      description?: string;
+      logo?: string;
+    };
   };
 }
 

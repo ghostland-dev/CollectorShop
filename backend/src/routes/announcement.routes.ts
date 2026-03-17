@@ -299,6 +299,14 @@ async function fetchAnnouncementsWithPagination(where: Prisma.AnnouncementWhereI
             email: true,
             firstName: true,
             lastName: true,
+            shop: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                logo: true,
+              }
+            }
           }
         }
       },
@@ -368,6 +376,14 @@ router.get('/me', authenticate, authorize('SELLER', 'ADMIN'), async (req: Reques
             email: true,
             firstName: true,
             lastName: true,
+            shop: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                logo: true,
+              }
+            }
           }
         }
       },
@@ -395,6 +411,14 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
             email: true,
             firstName: true,
             lastName: true,
+            shop: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                logo: true,
+              }
+            }
           }
         }
       }

@@ -108,9 +108,30 @@ function AnnouncementInfo({ announcement, canPurchase, onAddToCart, onBuyNow, is
         Statut: {announcement.status}
       </Typography>
       {announcement.seller && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Vendeur: {announcement.seller.firstName} {announcement.seller.lastName} ({announcement.seller.email})
-        </Typography>
+        <Paper sx={{ p: 2, mb: 3, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            🏪 Boutique
+          </Typography>
+          {announcement.seller.shop ? (
+            <>
+              <Typography variant="h6">
+                {announcement.seller.shop.name}
+              </Typography>
+              {announcement.seller.shop.description && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  {announcement.seller.shop.description}
+                </Typography>
+              )}
+              <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
+                Vendeur: {announcement.seller.firstName} {announcement.seller.lastName}
+              </Typography>
+            </>
+          ) : (
+            <Typography variant="body2">
+              {announcement.seller.firstName} {announcement.seller.lastName} ({announcement.seller.email})
+            </Typography>
+          )}
+        </Paper>
       )}
       <PurchaseButtons
         canPurchase={canPurchase}

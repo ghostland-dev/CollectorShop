@@ -54,6 +54,8 @@ function CardPriceSection({ price, status }: { price: number; status: string }) 
 
 // Helper component for card content
 function CardContentSection({ announcement }: { announcement: Announcement }) {
+  const shopName = announcement.seller?.shop?.name || `${announcement.seller?.firstName || ''} ${announcement.seller?.lastName || ''}`;
+  
   return (
     <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
       <Typography
@@ -79,6 +81,13 @@ function CardContentSection({ announcement }: { announcement: Announcement }) {
           sx={{ mb: 1, alignSelf: 'flex-start' }}
         />
       )}
+      <Typography
+        variant="caption"
+        color="primary"
+        sx={{ mb: 1.5, fontWeight: 500 }}
+      >
+        🏪 {shopName}
+      </Typography>
       <Typography
         variant="body2"
         color="text.secondary"

@@ -1,7 +1,7 @@
 # Makefile - Collector.shop
 # Simplifie les opérations courantes du projet
 
-.PHONY: help install dev build test clean docker-up docker-down docker-restart logs seed migrate lint format audit k8s-start k8s-stop k8s-restart k8s-status k8s-logs k8s-urls k8s-clean
+.PHONY: help install dev build test clean docker-up docker-down docker-restart logs seed migrate lint format audit k8s-start k8s-stop k8s-restart k8s-status k8s-logs k8s-urls k8s-clean jenkins-build jenkins-start jenkins-stop jenkins-restart jenkins-logs jenkins-open jenkins-clean
 
 # Couleurs pour l'affichage
 BLUE := \033[0;34m
@@ -391,6 +391,54 @@ shell-db: ## Ouvre un shell PostgreSQL
 
 shell-redis: ## Ouvre un shell Redis
 	@docker-compose exec redis redis-cli
+
+##@ Jenkins CI/CD Local
+
+jenkins-build: ## Build l'image Docker Jenkins (Node.js 20 + Docker CLI + Trivy)
+	@echo "$(BLUE)🔨 Build de l'image Jenkins...$(NC)"
+	@docker-compose -f docker-compose.jenkins.yml build --no-cache
+	@echo "$(GREEN)✅ Image Jenkins construite$(NC)"
+
+jenkins-start: ## Démarre Jenkins (http://localhost:8080 — admin/admin)
+	@echo "$(BLUE)🚀 Démarrage de Jenkins...$(NC)"
+	@docker-compose -f docker-compose.jenkins.yml up -d
+	@echo "$(GREEN)✅ Jenkins démarré$(NC)"
+	@echo ""
+	@echo "$(YELLOW)⏳ Jenkins initialise ses plugins (~2 min au premier démarrage)$(NC)"
+	@echo "$(YELLOW)📊 Interface : http://localhost:8080$(NC)"
+	@echo "$(YELLOW)🔑 Identifiants : admin / admin$(NC)"
+	@echo "$(YELLOW)📋 Job créé automatiquement : collector-shop-pipeline$(NC)"
+
+jenkins-stop: ## Arrête Jenkins
+	@echo "$(BLUE)🛑 Arrêt de Jenkins...$(NC)"
+	@docker-compose -f docker-compose.jenkins.yml down
+	@echo "$(GREEN)✅ Jenkins arrêté$(NC)"
+
+jenkins-restart: ## Redémarre Jenkins
+	@echo "$(BLUE)🔄 Redémarrage de Jenkins...$(NC)"
+	@docker-compose -f docker-compose.jenkins.yml restart
+	@echo "$(GREEN)✅ Jenkins redémarré$(NC)"
+
+jenkins-logs: ## Affiche les logs Jenkins en temps réel
+	@docker-compose -f docker-compose.jenkins.yml logs -f jenkins
+
+jenkins-open: ## Ouvre l'interface Jenkins dans le navigateur
+	@echo "$(BLUE)🌐 Ouverture de Jenkins...$(NC)"
+	@xdg-open http://localhost:8080 2>/dev/null || open http://localhost:8080 2>/dev/null || echo "$(YELLOW)Ouvrez http://localhost:8080 dans votre navigateur$(NC)"
+
+jenkins-clean: ## Supprime Jenkins et ses données (⚠️ IRRÉVERSIBLE)
+	@echo "$(RED)⚠️  ATTENTION: Suppression de Jenkins et de toutes ses données$(NC)"
+	@echo "$(YELLOW)Appuyez sur Ctrl+C pour annuler, ou Entrée pour continuer...$(NC)"
+	@read confirm
+	@docker-compose -f docker-compose.jenkins.yml down -v
+	@docker volume rm collector-shop-jenkins-home 2>/dev/null || true
+	@echo "$(GREEN)✅ Jenkins et ses données supprimés$(NC)"
+
+jenkins-status: ## Affiche le statut de Jenkins
+	@echo "$(BLUE)📊 Statut Jenkins$(NC)"
+	@docker-compose -f docker-compose.jenkins.yml ps
+	@echo ""
+	@curl -s http://localhost:8080/login > /dev/null && echo "$(GREEN)✅ Jenkins accessible : http://localhost:8080$(NC)" || echo "$(RED)❌ Jenkins non accessible$(NC)"
 
 ##@ Kubernetes (Minikube)
 
