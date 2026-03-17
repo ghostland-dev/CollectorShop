@@ -47,8 +47,10 @@ pipeline {
         PG_USER             = 'test'
         PG_PASSWORD         = 'test'
         PG_DB               = 'collector_shop_test'
-        DATABASE_URL        = "postgresql://test:test@jenkins-pg-${BUILD_NUMBER}:5432/collector_shop_test?schema=public"
-        TEST_DATABASE_URL   = "postgresql://test:test@jenkins-pg-${BUILD_NUMBER}:5432/collector_shop_test?schema=public"
+        // DATABASE_URL est mis à jour dynamiquement dans la stage 'Démarrage PostgreSQL de test'
+        // avec l'IP réelle du container (réseau host Jenkins → accès par IP docker0)
+        DATABASE_URL        = "postgresql://test:test@127.0.0.1:5432/collector_shop_test?schema=public"
+        TEST_DATABASE_URL   = "postgresql://test:test@127.0.0.1:5432/collector_shop_test?schema=public"
 
         // ─── Secrets de test ───────────────────────────────────────────────────
         JWT_SECRET          = 'jenkins-ci-test-secret-32chars!!'
