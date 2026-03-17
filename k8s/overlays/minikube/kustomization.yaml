@@ -3,36 +3,36 @@ kind: Kustomization
 
 # ─── Base ───────────────────────────────────────────────────────────────────
 resources:
-  - ../../base
+- ../../base
 
 # ─── Image tags — mis à jour automatiquement par Jenkins ────────────────────
 # Le pipeline Jenkins exécute :
 #   kustomize edit set image collector-shop-backend=collector-shop-backend:$BUILD_NUMBER
 #   kustomize edit set image collector-shop-frontend=collector-shop-frontend:$BUILD_NUMBER
 images:
-  - name: collector-shop-backend
-    newName: collector-shop-backend
-    newTag: "latest"
-  - name: collector-shop-frontend
-    newName: collector-shop-frontend
-    newTag: "latest"
+- name: collector-shop-backend
+  newName: collector-shop-backend
+  newTag: "36"
+- name: collector-shop-frontend
+  newName: collector-shop-frontend
+  newTag: "36"
 
 # ─── Patches Minikube (NodePort + imagePullPolicy: Never) ───────────────────
 patches:
-  - target:
-      kind: Deployment
-      name: backend
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/imagePullPolicy
-        value: Never
-  - target:
-      kind: Deployment
-      name: frontend
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/imagePullPolicy
-        value: Never
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/imagePullPolicy
+      value: Never
+  target:
+    kind: Deployment
+    name: backend
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/imagePullPolicy
+      value: Never
+  target:
+    kind: Deployment
+    name: frontend
 
 # ─── Labels spécifiques à l'environnement ───────────────────────────────────
 commonLabels:
