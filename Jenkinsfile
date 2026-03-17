@@ -440,10 +440,21 @@ pipeline {
 
                                 echo "Polling Synced + Healthy (max 5 min)..."
                                 for i in \$(seq 1 30); do
-                                    APP_JSON=\$(curl -sf "\${ARGOCD_URL}/api/v1/applications/${ARGOCD_APP}" \\
-                                        -H "Authorization: Bearer \${ARGOCD_AUTH_TOKEN}" 2>/dev/null || echo '{}')
-                                    SYNC_ST=\$(echo "\${APP_JSON}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',{}).get('sync',{}).get('status','?'))" 2>/dev/null)
-                                    HEALTH_ST=\$(echo "\${APP_JSON}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',{}).get('health',{}).get('status','?'))" 2>/dev/null)
+                                    # Pipe curl directement dans python3 — évite echo qui interprète
+                                    # les séquences \n dans le JSON ArgoCD (problème avec /bin/sh dash)
+                                    STATUS=\$(curl -sf "\${ARGOCD_URL}/api/v1/applications/${ARGOCD_APP}" \\
+                                        -H "Authorization: Bearer \${ARGOCD_AUTH_TOKEN}" 2>/dev/null \\
+                                        | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    s = d.get('status', {})
+    print(s.get('sync',{}).get('status','?') + ' ' + s.get('health',{}).get('status','?'))
+except Exception:
+    print('? ?')
+" 2>/dev/null || echo "? ?")
+                                    SYNC_ST=\$(echo "\${STATUS}" | awk '{print \$1}')
+                                    HEALTH_ST=\$(echo "\${STATUS}" | awk '{print \$2}')
                                     echo "  [\${i}/30] Sync: \${SYNC_ST}  Health: \${HEALTH_ST}"
 
                                     if [ "\${SYNC_ST}" = "Synced" ] && [ "\${HEALTH_ST}" = "Healthy" ]; then
