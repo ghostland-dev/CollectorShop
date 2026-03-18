@@ -3,6 +3,18 @@ import app from '../index';
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../utils/auth';
 
+// Mock MinIO pour éviter les tentatives de connexion en environnement de test
+jest.mock('../services/minio.service', () => ({
+  minioService: {
+    uploadFile: jest.fn().mockResolvedValue('https://mock-minio/test-image.jpg'),
+    deleteFile: jest.fn().mockResolvedValue(undefined),
+    getPublicUrl: jest.fn().mockReturnValue('https://mock-minio/test-image.jpg'),
+  },
+}));
+
+// Timeout global étendu pour les environnements CI (bcrypt + DB + HTTP)
+jest.setTimeout(30000);
+
 const prisma = new PrismaClient();
 
 // Helper functions to reduce complexity
