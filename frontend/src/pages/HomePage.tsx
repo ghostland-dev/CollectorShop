@@ -127,7 +127,7 @@ function HeroSection({ isAuthenticated }: { isAuthenticated: boolean }) {
             variant="h4"
             sx={{ mb: 2, color: '#f8fafc', fontSize: { xs: '1.2rem', md: '1.6rem' }, fontWeight: 500, opacity: 0.9 }}
           >
-            La marketplace des cartes Pokémon rares
+            La marketplace des cartes Pokémon rares (test)
           </Typography>
           <Typography variant="body1" sx={{ mb: 5, color: '#94a3b8', maxWidth: 520, mx: 'auto', lineHeight: 1.7 }}>
             Achetez et vendez des cartes Pokémon certifiées. Base Set 1ère édition,
