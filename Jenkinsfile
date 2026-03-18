@@ -702,6 +702,94 @@ except Exception as e:
                     }
                 }
 
+                stage('Tests de Charge (Locust)') {
+                    steps {
+                        sh """
+                            echo "=== Tests de charge Locust ==="
+                            BACKEND="${MINIKUBE_BACKEND_URL}"
+                            LOCUST_HTML="locust-report-${BUILD_NUMBER}.html"
+                            LOCUST_CSV="locust-stats-${BUILD_NUMBER}"
+                            LOCUST_FILE="tests/load-tests/locustfile.py"
+
+                            # Installer Locust si absent
+                            export PATH="\$HOME/.local/bin:\$PATH"
+                            if ! command -v locust > /dev/null 2>&1; then
+                                echo "Installation de Locust..."
+                                pip3 install --quiet --user --break-system-packages \\
+                                    -r tests/load-tests/requirements-locust.txt
+                            fi
+
+                            # Vérifier que le backend répond
+                            if ! curl -sf \${BACKEND}/health --max-time 5 > /dev/null 2>&1; then
+                                echo "⚠️  Backend non disponible — tests Locust ignorés"
+                                exit 0
+                            fi
+
+                            echo "▶  Lancement Locust : 50 users / spawn-rate 5 / 60s"
+                            export PATH="\$HOME/.local/bin:\$PATH"
+                            locust \\
+                                -f \${LOCUST_FILE} \\
+                                --host \${BACKEND} \\
+                                --headless \\
+                                --users 50 \\
+                                --spawn-rate 5 \\
+                                --run-time 60s \\
+                                --html \${LOCUST_HTML} \\
+                                --csv \${LOCUST_CSV} \\
+                                --csv-full-history \\
+                                --only-summary \\
+                                --loglevel WARNING || true
+
+                            # Résumé CSV → console
+                            echo "=== Résumé Locust ==="
+                            python3 -c "
+import csv, os, sys
+stats_file = '\${LOCUST_CSV}_stats.csv'
+if not os.path.exists(stats_file):
+    print('(fichier stats absent)')
+    sys.exit(0)
+with open(stats_file) as f:
+    rows = list(csv.DictReader(f))
+agg = next((r for r in rows if r.get('Name') == 'Aggregated'), None)
+if not agg:
+    print('(ligne Aggregated non trouvée)')
+    sys.exit(0)
+req      = int(agg.get('Request Count', 0))
+fail     = int(agg.get('Failure Count', 0))
+p50      = agg.get('50%', 'N/A')
+p95      = agg.get('95%', 'N/A')
+p99      = agg.get('99%', 'N/A')
+rps      = agg.get('Requests/s', 'N/A')
+err_pct  = round(fail / req * 100, 1) if req else 0
+ok = err_pct < 5 and (p95 == 'N/A' or float(p95) < 500)
+print(f'Requêtes totales : {req}')
+print(f'Échecs           : {fail}  ({err_pct} %)')
+print(f'Débit            : {rps} req/s')
+print(f'P50 latence      : {p50} ms')
+print(f'P95 latence      : {p95} ms')
+print(f'P99 latence      : {p99} ms')
+print(f'Verdict          : {\"✅ OK\" if ok else \"⚠️  DÉGRADÉ\"}')
+" || echo "(résumé non disponible)"
+                        """
+                    }
+                    post {
+                        always {
+                            publishHTML(target: [
+                                allowMissing         : true,
+                                alwaysLinkToLastBuild: true,
+                                keepAll              : true,
+                                reportDir            : '.',
+                                reportFiles          : "locust-report-${BUILD_NUMBER}.html",
+                                reportName           : 'Tests de Charge Locust'
+                            ])
+                            archiveArtifacts(
+                                artifacts: "locust-report-${BUILD_NUMBER}.html, locust-stats-${BUILD_NUMBER}*.csv",
+                                allowEmptyArchive: true
+                            )
+                        }
+                    }
+                }
+
             }
         }
 
@@ -722,27 +810,30 @@ except Exception as e:
         // ─── Notification Discord ────────────────────────────────────────
         success {
             script {
-                def duration = currentBuild.durationString.replace(' and counting', '')
+                def duration  = currentBuild.durationString.replace(' and counting', '')
                 def commitSha = sh(script: 'git rev-parse --short HEAD 2>/dev/null || echo "N/A"', returnStdout: true).trim()
                 def commitMsg = sh(script: 'git log -1 --pretty=%s 2>/dev/null || echo "N/A"', returnStdout: true).trim()
+                def appLabel     = env.MINIKUBE_FRONTEND_URL.replaceAll('https?://', '')
+                def apiLabel     = env.MINIKUBE_BACKEND_URL.replaceAll('https?://', '') + '/health'
+                def grafanaLabel = env.GRAFANA_URL.replaceAll('https?://', '')
                 discordNotify(
                     status: 'SUCCESS',
-                    color: 3066993,      // vert
+                    color: 3066993,
                     emoji: '✅',
                     title: "Pipeline CI/CD — BUILD #${BUILD_NUMBER} RÉUSSI",
                     fields: [
-                        [name: '🌿 Branche',    value: "${GIT_DEPLOY_BRANCH}",  inline: true],
-                        [name: '🔖 Commit',     value: commitSha,               inline: true],
-                        [name: '⏱️ Durée',      value: duration,                inline: true],
-                        [name: '💬 Message',    value: commitMsg,               inline: false],
-                        [name: '🌐 Application',  value: "[${MINIKUBE_FRONTEND_URL}](${MINIKUBE_FRONTEND_URL})", inline: true],
-                        [name: '🔧 API Backend',  value: "[${MINIKUBE_BACKEND_URL}/health](${MINIKUBE_BACKEND_URL}/health)", inline: true],
-                        [name: '🚀 ArgoCD',       value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
-                        [name: '📊 Grafana',      value: "[${GRAFANA_URL}](${GRAFANA_URL})", inline: true],
-                        [name: '📡 Netdata',      value: "[netdata.shopcollector.local](https://netdata.shopcollector.local)", inline: true],
-                        [name: '🐙 Gitea',        value: "[gitea.shopcollector.local](https://gitea.shopcollector.local)", inline: true],
-                        [name: '🔍 SonarCloud',   value: "[sonarcloud.io](https://sonarcloud.io/project/overview?id=goodfood-apps_collector-shop)", inline: true],
-                        [name: '🏗️ Jenkins',      value: "[Build #${BUILD_NUMBER}](${BUILD_URL})", inline: true],
+                        [name: '🌿 Branche',         value: "${GIT_DEPLOY_BRANCH}",                                                                    inline: true],
+                        [name: '🔖 Commit',           value: "`${commitSha}`",                                                                          inline: true],
+                        [name: '⏱️ Durée',            value: duration,                                                                                   inline: true],
+                        [name: '💬 Message',          value: escJson(commitMsg),                                                                         inline: false],
+                        [name: '🌐 Application',      value: "[${appLabel}](${MINIKUBE_FRONTEND_URL})",                                                  inline: true],
+                        [name: '🔧 API Health',       value: "[${apiLabel}](${MINIKUBE_BACKEND_URL}/health)",                                            inline: true],
+                        [name: '🚀 ArgoCD',           value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
+                        [name: '📊 Grafana',          value: "[${grafanaLabel}](${GRAFANA_URL})",                                                        inline: true],
+                        [name: '📡 Netdata',          value: "[netdata.shopcollector.local](https://netdata.shopcollector.local)",                        inline: true],
+                        [name: '🐙 Gitea',            value: "[gitea.shopcollector.local](https://gitea.shopcollector.local)",                           inline: true],
+                        [name: '🔍 SonarCloud',       value: "[sonarcloud.io](https://sonarcloud.io/project/overview?id=goodfood-apps_collector-shop)",  inline: true],
+                        [name: '🏗️ Jenkins',          value: "[Build #${BUILD_NUMBER}](${BUILD_URL})",                                                   inline: true],
                     ]
                 )
             }
@@ -750,22 +841,23 @@ except Exception as e:
 
         failure {
             script {
-                def duration = currentBuild.durationString.replace(' and counting', '')
+                def duration  = currentBuild.durationString.replace(' and counting', '')
                 def commitSha = sh(script: 'git rev-parse --short HEAD 2>/dev/null || echo "N/A"', returnStdout: true).trim()
                 def commitMsg = sh(script: 'git log -1 --pretty=%s 2>/dev/null || echo "N/A"', returnStdout: true).trim()
+                def appLabel  = env.MINIKUBE_FRONTEND_URL.replaceAll('https?://', '')
                 discordNotify(
                     status: 'FAILURE',
-                    color: 15158332,     // rouge
+                    color: 15158332,
                     emoji: '❌',
                     title: "Pipeline CI/CD — BUILD #${BUILD_NUMBER} ÉCHOUÉ",
                     fields: [
-                        [name: '🌿 Branche',   value: "${GIT_DEPLOY_BRANCH}", inline: true],
-                        [name: '🔖 Commit',    value: commitSha,              inline: true],
-                        [name: '⏱️ Durée',     value: duration,               inline: true],
-                        [name: '💬 Message',   value: commitMsg,              inline: false],
-                        [name: '📋 Logs Jenkins',  value: "[Voir les logs](${BUILD_URL}console)", inline: true],
-                        [name: '🚀 ArgoCD',        value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
-                        [name: '🌐 Application',   value: "[${MINIKUBE_FRONTEND_URL}](${MINIKUBE_FRONTEND_URL})", inline: true],
+                        [name: '🌿 Branche',         value: "${GIT_DEPLOY_BRANCH}",                                                                       inline: true],
+                        [name: '🔖 Commit',           value: "`${commitSha}`",                                                                             inline: true],
+                        [name: '⏱️ Durée',            value: duration,                                                                                      inline: true],
+                        [name: '💬 Message',          value: escJson(commitMsg),                                                                            inline: false],
+                        [name: '📋 Logs Jenkins',     value: "[Build #${BUILD_NUMBER} — Logs](${BUILD_URL}console)",                                       inline: false],
+                        [name: '🚀 ArgoCD',           value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
+                        [name: '🌐 Application',      value: "[${appLabel}](${MINIKUBE_FRONTEND_URL})",                                                    inline: true],
                     ]
                 )
             }
@@ -773,21 +865,23 @@ except Exception as e:
 
         unstable {
             script {
-                def duration = currentBuild.durationString.replace(' and counting', '')
-                def commitSha = sh(script: 'git rev-parse --short HEAD 2>/dev/null || echo "N/A"', returnStdout: true).trim()
+                def duration     = currentBuild.durationString.replace(' and counting', '')
+                def commitSha    = sh(script: 'git rev-parse --short HEAD 2>/dev/null || echo "N/A"', returnStdout: true).trim()
+                def appLabel     = env.MINIKUBE_FRONTEND_URL.replaceAll('https?://', '')
+                def grafanaLabel = env.GRAFANA_URL.replaceAll('https?://', '')
                 discordNotify(
                     status: 'UNSTABLE',
-                    color: 16776960,     // jaune
+                    color: 16776960,
                     emoji: '⚠️',
                     title: "Pipeline CI/CD — BUILD #${BUILD_NUMBER} INSTABLE",
                     fields: [
-                        [name: '🌿 Branche',  value: "${GIT_DEPLOY_BRANCH}", inline: true],
-                        [name: '🔖 Commit',   value: commitSha,        inline: true],
-                        [name: '⏱️ Durée',    value: duration,         inline: true],
-                        [name: '📋 Logs Jenkins',  value: "[Voir les logs](${BUILD_URL}console)", inline: true],
-                        [name: '🚀 ArgoCD',        value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
-                        [name: '🌐 Application',   value: "[${MINIKUBE_FRONTEND_URL}](${MINIKUBE_FRONTEND_URL})", inline: true],
-                        [name: '📊 Grafana',       value: "[${GRAFANA_URL}](${GRAFANA_URL})", inline: true],
+                        [name: '🌿 Branche',         value: "${GIT_DEPLOY_BRANCH}",                                                                       inline: true],
+                        [name: '🔖 Commit',           value: "`${commitSha}`",                                                                             inline: true],
+                        [name: '⏱️ Durée',            value: duration,                                                                                      inline: true],
+                        [name: '📋 Logs Jenkins',     value: "[Build #${BUILD_NUMBER} — Logs](${BUILD_URL}console)",                                       inline: false],
+                        [name: '🚀 ArgoCD',           value: "[argocd.shopcollector.local](https://argocd.shopcollector.local/applications/${ARGOCD_APP})", inline: true],
+                        [name: '🌐 Application',      value: "[${appLabel}](${MINIKUBE_FRONTEND_URL})",                                                    inline: true],
+                        [name: '📊 Grafana',          value: "[${grafanaLabel}](${GRAFANA_URL})",                                                          inline: true],
                     ]
                 )
             }
@@ -797,12 +891,25 @@ except Exception as e:
 }
 
 // =============================================================================
+// Helpers
+// =============================================================================
+
+// Échappe une chaîne pour l'insérer dans un payload JSON (Discord webhook)
+def escJson(String s) {
+    return s.replace('\\', '\\\\')
+            .replace('"',  '\\"')
+            .replace('\n', ' ')
+            .replace('\r', '')
+            .replace('\t', ' ')
+}
+
+// =============================================================================
 // Fonction utilitaire : envoi notification Discord via webhook (curl)
 // =============================================================================
 def discordNotify(Map args) {
     withCredentials([string(credentialsId: 'DISCORD_WEBHOOK', variable: 'WEBHOOK_URL')]) {
         def fieldsJson = args.fields.collect { f ->
-            """{"name":"${f.name}","value":"${f.value}","inline":${f.inline}}"""
+            """{"name":"${escJson(f.name)}","value":"${escJson(f.value)}","inline":${f.inline}}"""
         }.join(',')
 
         def payload = """{
