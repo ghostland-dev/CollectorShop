@@ -216,53 +216,52 @@ pipeline {
         // ═════════════════════════════════════════════════════════════════════
         stage('Tests Unitaires') {
         // ═════════════════════════════════════════════════════════════════════
-        //  Groupe 3 : tests Jest backend + frontend avec couverture de code
-        //  PostgreSQL éphémère lancé via port mapping (network_mode: host)
-            stages {
+        //  Groupe 3 : tests Jest backend + frontend en parallèle
+        //    - Branche A : démarrage PostgreSQL éphémère → tests backend (nécessite DB)
+        //    - Branche B : tests frontend (jsdom, aucune DB requise — démarre immédiatement)
+            parallel {
 
-                stage('D\u00e9marrage Base de Donn\u00e9es') {
-                    steps {
-                        script {
-                            sh """
-                                echo "=== Démarrage PostgreSQL de test (port ${PG_PORT}) ==="
-                                docker run -d \\
-                                    --name ${PG_CONTAINER} \\
-                                    -p ${PG_PORT}:5432 \\
-                                    -e POSTGRES_USER=${PG_USER} \\
-                                    -e POSTGRES_PASSWORD=${PG_PASSWORD} \\
-                                    -e POSTGRES_DB=${PG_DB} \\
-                                    postgres:15-alpine
+                stage('Backend (DB \u2192 Tests)') {
+                    stages {
 
-                                for i in \$(seq 1 30); do
-                                    if docker exec ${PG_CONTAINER} pg_isready -U ${PG_USER} 2>/dev/null; then
-                                        echo "✅ PostgreSQL prêt sur localhost:${PG_PORT}"
-                                        break
-                                    fi
-                                    [ \$i -eq 30 ] && echo "❌ Timeout PostgreSQL" && exit 1
-                                    echo "Tentative \$i/30 — attente 3s..."
-                                    sleep 3
-                                done
-                            """
-                            sh """
-                                cd backend
-                                DATABASE_URL=${DATABASE_URL} \\
-                                npx prisma db push --accept-data-loss --skip-generate
-                                echo "✅ Schéma Prisma appliqué"
-                            """
+                        stage('D\u00e9marrage Base de Donn\u00e9es') {
+                            steps {
+                                script {
+                                    sh """
+                                        echo "=== Démarrage PostgreSQL de test (port ${PG_PORT}) ==="
+                                        docker run -d \\
+                                            --name ${PG_CONTAINER} \\
+                                            -p ${PG_PORT}:5432 \\
+                                            -e POSTGRES_USER=${PG_USER} \\
+                                            -e POSTGRES_PASSWORD=${PG_PASSWORD} \\
+                                            -e POSTGRES_DB=${PG_DB} \\
+                                            postgres:15-alpine
+
+                                        for i in \$(seq 1 30); do
+                                            if docker exec ${PG_CONTAINER} pg_isready -U ${PG_USER} 2>/dev/null; then
+                                                echo "✅ PostgreSQL prêt sur localhost:${PG_PORT}"
+                                                break
+                                            fi
+                                            [ \$i -eq 30 ] && echo "❌ Timeout PostgreSQL" && exit 1
+                                            echo "Tentative \$i/30 — attente 3s..."
+                                            sleep 3
+                                        done
+                                    """
+                                    sh """
+                                        cd backend
+                                        DATABASE_URL=${DATABASE_URL} \\
+                                        npx prisma db push --accept-data-loss --skip-generate
+                                        echo "✅ Schéma Prisma appliqué"
+                                    """
+                                }
+                            }
                         }
-                    }
-                }
-
-                stage('Suites de Tests') {
-                    parallel {
 
                         stage('Tests Unitaires Backend') {
                             steps {
                                 sh """
                                     echo "=== Tests Backend (coverage + JUnit XML) ==="
                                     mkdir -p backend/test-results
-                                    # JEST_JUNIT_OUTPUT_DIR est relatif au CWD de jest (=backend/)
-                                    # donc "test-results" → backend/test-results/junit-backend.xml
                                     DATABASE_URL=${DATABASE_URL} \\
                                     JWT_SECRET=${JWT_SECRET} \\
                                     JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET} \\
@@ -298,43 +297,42 @@ pipeline {
                             }
                         }
 
-                        stage('Tests Unitaires Frontend') {
-                            steps {
-                                sh """
-                                    echo "=== Tests Frontend (coverage + JUnit XML) ==="
-                                    mkdir -p frontend/test-results
-                                    # JEST_JUNIT_OUTPUT_DIR est relatif au CWD de jest (=frontend/)
-                                    JEST_JUNIT_OUTPUT_DIR=test-results \\
-                                    JEST_JUNIT_OUTPUT_NAME=junit-frontend.xml \\
-                                    JEST_JUNIT_CLASSNAME='{classname}' \\
-                                    JEST_JUNIT_TITLE='{title}' \\
-                                    npm run test:coverage --workspace=frontend -- \\
-                                        --reporters=default --reporters=jest-junit \\
-                                        --forceExit 2>&1
-                                    echo "✅ Tests Frontend : tous passés"
-                                    ls -la frontend/test-results/ 2>/dev/null || true
-                                """
-                            }
-                            post {
-                                always {
-                                    junit(
-                                        testResults: 'frontend/test-results/junit-frontend.xml',
-                                        allowEmptyResults: true
-                                    )
-                                    publishHTML(target: [
-                                        allowMissing         : true,
-                                        alwaysLinkToLastBuild: true,
-                                        keepAll              : true,
-                                        reportDir            : 'frontend/coverage',
-                                        reportFiles          : 'index.html',
-                                        reportName           : 'Couverture Frontend'
-                                    ])
-                                }
-                                success { echo '✅ Tests Frontend : tous passés' }
-                                failure { echo '❌ Tests Frontend : échecs détectés' }
-                            }
-                        }
+                    }
+                }
 
+                stage('Tests Unitaires Frontend') {
+                    steps {
+                        sh """
+                            echo "=== Tests Frontend (coverage + JUnit XML) ==="
+                            mkdir -p frontend/test-results
+                            JEST_JUNIT_OUTPUT_DIR=test-results \\
+                            JEST_JUNIT_OUTPUT_NAME=junit-frontend.xml \\
+                            JEST_JUNIT_CLASSNAME='{classname}' \\
+                            JEST_JUNIT_TITLE='{title}' \\
+                            npm run test:coverage --workspace=frontend -- \\
+                                --reporters=default --reporters=jest-junit \\
+                                --forceExit 2>&1
+                            echo "✅ Tests Frontend : tous passés"
+                            ls -la frontend/test-results/ 2>/dev/null || true
+                        """
+                    }
+                    post {
+                        always {
+                            junit(
+                                testResults: 'frontend/test-results/junit-frontend.xml',
+                                allowEmptyResults: true
+                            )
+                            publishHTML(target: [
+                                allowMissing         : true,
+                                alwaysLinkToLastBuild: true,
+                                keepAll              : true,
+                                reportDir            : 'frontend/coverage',
+                                reportFiles          : 'index.html',
+                                reportName           : 'Couverture Frontend'
+                            ])
+                        }
+                        success { echo '✅ Tests Frontend : tous passés' }
+                        failure { echo '❌ Tests Frontend : échecs détectés' }
                     }
                 }
 
