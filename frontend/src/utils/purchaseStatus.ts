@@ -28,4 +28,3 @@ export function getPurchaseStatusColor(
       return 'default';
   }
 }
-

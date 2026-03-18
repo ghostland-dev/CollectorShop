@@ -311,7 +311,7 @@ Cette erreur peut avoir plusieurs causes :
    ```bash
    # Vérifier si le backend est en cours d'exécution
    curl http://localhost:5000/health
-   
+
    # Si pas de réponse, démarrer le backend
    cd backend
    npm run dev

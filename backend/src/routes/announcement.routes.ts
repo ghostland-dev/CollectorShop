@@ -114,11 +114,11 @@ function handleUserNotFoundError(res: Response): boolean {
 
 // Helper function to handle Prisma P2003 error
 function handlePrismaP2003Error(error: { code: string; meta?: unknown }, userId: string, res: Response): boolean {
-  logger.error('Erreur de référence: utilisateur invalide', { 
+  logger.error('Erreur de référence: utilisateur invalide', {
     userId,
     error: error.meta
   });
-  res.status(400).json({ 
+  res.status(400).json({
     error: 'Erreur de référence: votre compte utilisateur n\'existe plus. Veuillez vous reconnecter.',
     code: 'USER_NOT_FOUND'
   });
@@ -127,12 +127,12 @@ function handlePrismaP2003Error(error: { code: string; meta?: unknown }, userId:
 
 // Helper function to handle generic errors
 function handleGenericError(error: unknown, userId: string, res: Response): void {
-  logger.error('Erreur lors de la création de l\'annonce', { 
+  logger.error('Erreur lors de la création de l\'annonce', {
     error: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
     userId
   });
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Erreur lors de la création de l\'annonce',
     message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
   });
@@ -141,7 +141,7 @@ function handleGenericError(error: unknown, userId: string, res: Response): void
 // Helper function to handle announcement creation errors
 function handleAnnouncementCreationError(error: unknown, userId: string | undefined, res: Response): void {
   const userIdValue = userId || 'unknown';
-  
+
   if (error instanceof z.ZodError) {
     handleZodError(error, res);
     return;
@@ -215,7 +215,7 @@ async function runModerationCheck(
       reasons: moderationResult.reasons,
       score: moderationResult.score,
     });
-    
+
     // 🔒 AUDIT LOG: Rejet par modération
     logModerationReject(
       userId,
@@ -224,7 +224,7 @@ async function runModerationCheck(
       moderationResult.reasons,
       moderationResult.score
     );
-    
+
     res.status(400).json({
       error: 'Annonce rejetée par la modération automatique',
       reasons: moderationResult.reasons,
@@ -264,7 +264,7 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
       sellerId: user.userId,
       moderationScore: moderationResult.score,
     });
-    
+
     // 🔒 AUDIT LOG: Création d'annonce
     logAuditSuccess(AuditAction.ANNOUNCEMENT_CREATE, user.userId, {
       userEmail: user.email,
@@ -280,7 +280,7 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
       ipAddress: context.ipAddress,
       userAgent: context.userAgent,
     });
-    
+
     res.status(201).json({ message: 'Annonce créée avec succès', announcement });
   } catch (error) {
     handleAnnouncementCreationError(error, req.user?.userId, res);
@@ -322,7 +322,7 @@ async function fetchAnnouncementsWithPagination(where: Prisma.AnnouncementWhereI
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { category, minPrice, maxPrice, search, page = '1', limit = '20' } = req.query;
-    
+
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
@@ -343,11 +343,11 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       limit: limitNum,
     });
   } catch (error) {
-    logger.error('Erreur lors de la récupération des annonces', { 
+    logger.error('Erreur lors de la récupération des annonces', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Erreur lors de la récupération des annonces',
       message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
     });

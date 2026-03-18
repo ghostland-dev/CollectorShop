@@ -417,4 +417,3 @@ router.get('/messages/unread-count', authenticate, async (req: Request, res: Res
 });
 
 export default router;
-

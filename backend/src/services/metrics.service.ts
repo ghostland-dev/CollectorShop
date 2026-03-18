@@ -71,7 +71,7 @@ class MetricsService {
 
   constructor() {
     this.register = new Registry();
-    
+
     this.register.setDefaultLabels({
       app: 'collector-shop-api',
     });

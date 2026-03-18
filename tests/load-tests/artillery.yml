@@ -83,4 +83,3 @@ scenarios:
       - think: 1
       - function: "searchCatalog"
       - think: 1
-

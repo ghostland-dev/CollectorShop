@@ -148,4 +148,3 @@ export function PaymentForm({ formData, errors, onChange }: PaymentFormProps) {
     </Box>
   );
 }
-

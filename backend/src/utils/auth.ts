@@ -64,7 +64,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 
     const token = authHeader.substring(7);
     const payload = verifyToken(token);
-    
+
     req.user = payload;
     next();
   } catch (error) {
@@ -76,7 +76,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 export const authorize = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const user = req.user;
-    
+
     if (!user) {
       res.status(401).json({ error: 'Non authentifié' });
       return;

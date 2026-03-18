@@ -1,10 +1,10 @@
 /**
  * Script de test de charge pour Collector.shop POC
  * Utilise Artillery pour tester la montée en charge de l'application
- * 
+ *
  * Installation : npm install
  * Exécution : npm run load-test
- * 
+ *
  * Artillery utilise ce fichier comme "processor" pour les fonctions personnalisées
  */
 
@@ -46,14 +46,14 @@ async function getCatalog(context: ArtilleryContext, events: ArtilleryEvents): P
   try {
     const url = new URL(`${baseUrl}/announcements`);
     url.searchParams.append('limit', '20');
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
+
     const response = await fetch(url.toString(), {
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
 
     const duration = Date.now() - startTime;
@@ -69,7 +69,7 @@ async function getCatalog(context: ArtilleryContext, events: ArtilleryEvents): P
 
     if (isSuccess && hasData) {
       events.emit('counter', 'catalog.success', 1);
-      
+
       // Stocker l'ID de la première annonce pour le test suivant
       if (data.announcements.length > 0) {
         context.vars.announcementId = data.announcements[0].id;
@@ -81,7 +81,7 @@ async function getCatalog(context: ArtilleryContext, events: ArtilleryEvents): P
     const duration = Date.now() - startTime;
     events.emit('counter', 'catalog.errors', 1);
     events.emit('histogram', 'catalog.response_time', duration);
-    
+
     if (error instanceof Error && error.name === 'AbortError') {
       events.emit('counter', 'catalog.errors.timeout', 1);
     } else {
@@ -95,7 +95,7 @@ async function getCatalog(context: ArtilleryContext, events: ArtilleryEvents): P
  */
 async function getAnnouncement(context: ArtilleryContext, events: ArtilleryEvents): Promise<void> {
   const announcementId = context.vars.announcementId;
-  
+
   if (!announcementId) {
     return; // Pas d'annonce disponible, skip ce test
   }
@@ -106,11 +106,11 @@ async function getAnnouncement(context: ArtilleryContext, events: ArtilleryEvent
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
+
     const response = await fetch(`${baseUrl}/announcements/${announcementId}`, {
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
 
     const duration = Date.now() - startTime;
@@ -132,7 +132,7 @@ async function getAnnouncement(context: ArtilleryContext, events: ArtilleryEvent
     const duration = Date.now() - startTime;
     events.emit('counter', 'announcement.errors', 1);
     events.emit('histogram', 'announcement.response_time', duration);
-    
+
     if (error instanceof Error && error.name === 'AbortError') {
       events.emit('counter', 'announcement.errors.timeout', 1);
     } else {
@@ -155,14 +155,14 @@ async function searchCatalog(context: ArtilleryContext, events: ArtilleryEvents)
     const url = new URL(`${baseUrl}/announcements`);
     url.searchParams.append('search', searchTerm);
     url.searchParams.append('limit', '10');
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
+
     const response = await fetch(url.toString(), {
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
 
     const duration = Date.now() - startTime;
@@ -184,7 +184,7 @@ async function searchCatalog(context: ArtilleryContext, events: ArtilleryEvents)
     const duration = Date.now() - startTime;
     events.emit('counter', 'search.errors', 1);
     events.emit('histogram', 'search.response_time', duration);
-    
+
     if (error instanceof Error && error.name === 'AbortError') {
       events.emit('counter', 'search.errors.timeout', 1);
     } else {

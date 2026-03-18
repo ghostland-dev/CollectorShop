@@ -12,11 +12,11 @@ Collector.shop prend la sécurité très au sérieux. Ce document décrit notre 
 
 Si vous découvrez une faille de sécurité dans Collector.shop, **ne créez PAS d'issue publique**. Contactez-nous de manière privée :
 
-**📧 Email** : security@collector.shop  
-**🔐 PGP Key** : Disponible sur demande  
+**📧 Email** : security@collector.shop
+**🔐 PGP Key** : Disponible sur demande
 **⏱️ SLA de réponse** :
 - **Critique** (CVSS ≥ 9.0) : 24 heures
-- **Élevé** (CVSS 7.0-8.9) : 48 heures  
+- **Élevé** (CVSS 7.0-8.9) : 48 heures
 - **Moyen** (CVSS 4.0-6.9) : 7 jours
 - **Faible** (CVSS < 4.0) : 14 jours
 
@@ -252,11 +252,11 @@ Nous valorisons les contributions de la communauté sécurité :
 
 ## 📞 Contact
 
-**Équipe sécurité** : security@collector.shop  
-**Support général** : support@collector.shop  
+**Équipe sécurité** : security@collector.shop
+**Support général** : support@collector.shop
 **Site web** : https://collector.shop
 
 ---
 
-*Dernière mise à jour : 31 janvier 2026*  
+*Dernière mise à jour : 31 janvier 2026*
 *Version : 1.0*

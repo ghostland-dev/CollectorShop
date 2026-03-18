@@ -38,4 +38,3 @@ export function PurchaseCardActions({ purchase, isSeller, onUpdateStatus }: Purc
     </CardActions>
   );
 }
-

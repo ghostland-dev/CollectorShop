@@ -48,22 +48,22 @@ export function ExampleUsage() {
 
 /**
  * Avantages des classes utilitaires :
- * 
+ *
  * 1. KISS (Keep It Simple, Stupid)
  *    - Classes simples et claires
  *    - Pas de logique complexe
  *    - Facile à comprendre
- * 
+ *
  * 2. DRY (Don't Repeat Yourself)
  *    - Réutilisation des styles
  *    - Pas de duplication
  *    - Maintenance facilitée
- * 
+ *
  * 3. Performance
  *    - CSS global chargé une fois
  *    - Pas de styles inline répétés
  *    - Cache navigateur efficace
- * 
+ *
  * 4. Maintenabilité
  *    - Modification centralisée
  *    - Cohérence visuelle

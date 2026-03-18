@@ -31,9 +31,9 @@ check_criterion() {
     local description=$2
     local points=$3
     local files=$4
-    
+
     echo -e "${BOLD}${criterion}${NC} : ${description}"
-    
+
     # Vérifier les fichiers
     local all_exist=true
     IFS=',' read -ra FILE_ARRAY <<< "$files"
@@ -45,7 +45,7 @@ check_criterion() {
             all_exist=false
         fi
     done
-    
+
     if [ "$all_exist" = true ]; then
         echo -e "  ${GREEN}${BOLD}→ ${points}/${points} points${NC}"
         echo ""

@@ -22,4 +22,3 @@ export function TabPanel(props: TabPanelProps) {
     </div>
   );
 }
-

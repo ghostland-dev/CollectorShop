@@ -181,4 +181,3 @@ export function validateImages(images: string[]): { valid: boolean; invalidUrls:
     invalidUrls,
   };
 }
-

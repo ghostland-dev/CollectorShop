@@ -1,7 +1,7 @@
 # 🛡️ Plan de Remédiation Sécurité — Collector.shop
 
-**Date** : 21 février 2026  
-**Version** : 1.0  
+**Date** : 21 février 2026
+**Version** : 1.0
 **Auteur** : Équipe Collector.shop
 
 ---
@@ -10,7 +10,7 @@
 
 ### 1.1 Résultats des Tests de Charge (Artillery)
 
-**Configuration** : 
+**Configuration** :
 - Durée : 60 secondes
 - Montée progressive : 0 → 50 utilisateurs
 - Cible : API Backend (http://192.168.49.2:30000)
@@ -240,7 +240,7 @@ POST /auth/2fa/backup    // Génère backup codes
 - En tant qu'utilisateur, je peux activer 2FA depuis mon profil
 - En tant qu'admin, je peux forcer 2FA pour tous les utilisateurs
 
-**Effort** : 
+**Effort** :
 - Développement : 3 jours
 - Tests : 1 jour
 - Documentation : 0.5 jour
@@ -276,7 +276,7 @@ ALTER TABLE "User" ADD COLUMN email_encrypted BYTEA;
 UPDATE "User" SET email_encrypted = pgp_sym_encrypt(email, 'key');
 
 -- Chiffrement tablespace (PostgreSQL 15+)
-CREATE TABLESPACE encrypted_space 
+CREATE TABLESPACE encrypted_space
   LOCATION '/var/lib/postgresql/data/encrypted'
   WITH (encryption_key = 'aes256_key');
 ```
@@ -551,10 +551,10 @@ Mois 7+ (Maintenance)
 
 ### Points clés
 
-✅ **Plan structuré** en 3 phases (6 mois)  
-✅ **Budget réaliste** : 17 500€ première année  
-✅ **Priorisation CVSS** : Critiques en premier  
-✅ **ROI positif** : Évite incidents 100k€+  
+✅ **Plan structuré** en 3 phases (6 mois)
+✅ **Budget réaliste** : 17 500€ première année
+✅ **Priorisation CVSS** : Critiques en premier
+✅ **ROI positif** : Évite incidents 100k€+
 ✅ **Conformité RGPD** : Article 32 respecté
 
 ### Prochaines étapes
@@ -566,6 +566,6 @@ Mois 7+ (Maintenance)
 
 ---
 
-**Document validé par** : Équipe Collector.shop  
-**Dernière mise à jour** : 21 février 2026  
+**Document validé par** : Équipe Collector.shop
+**Dernière mise à jour** : 21 février 2026
 **Version** : 1.0

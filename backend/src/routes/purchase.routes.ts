@@ -190,7 +190,7 @@ router.post('/', authenticate, authorize('BUYER', 'SELLER', 'ADMIN'), async (req
       buyerId: user.userId,
       fraudRiskScore: fraudResult.riskScore,
     });
-    
+
     // 🔒 AUDIT LOG: Création d'achat
     logAuditSuccess(AuditAction.PURCHASE_CREATE, user.userId, {
       userEmail: user.email,
@@ -206,7 +206,7 @@ router.post('/', authenticate, authorize('BUYER', 'SELLER', 'ADMIN'), async (req
       userAgent: context.userAgent,
       severity: fraudResult.riskScore > 30 ? AuditSeverity.WARNING : AuditSeverity.INFO,
     });
-    
+
     res.status(201).json({ message: 'Achat créé avec succès', purchase });
   } catch (error) {
     handlePurchaseCreationError(error, res);
@@ -229,7 +229,7 @@ async function completePurchaseTransaction(purchaseId: string, announcementId: s
   return prisma.$transaction([
     prisma.purchase.update({
       where: { id: purchaseId },
-      data: { 
+      data: {
         status: 'COMPLETED',
         deliveryStatus: 'PREPARING',
       },

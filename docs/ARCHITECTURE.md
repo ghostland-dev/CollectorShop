@@ -15,7 +15,7 @@ graph TB
     subgraph "Client Layer"
         A[React App<br/>TypeScript + Material-UI]
     end
-    
+
     subgraph "API Layer"
         B[Express Backend<br/>Node.js 20 + TypeScript]
         B1[Auth Routes]
@@ -23,21 +23,21 @@ graph TB
         B3[Purchase Routes]
         B4[Chat Routes]
         B5[Upload Routes]
-        
+
         B --> B1
         B --> B2
         B --> B3
         B --> B4
         B --> B5
     end
-    
+
     subgraph "Business Logic"
         C1[Fraud Detection Service]
         C2[Moderation Service]
         C3[Payment Service]
         C4[MinIO Service]
         C5[Metrics Service]
-        
+
         B1 -.-> C1
         B2 -.-> C2
         B3 -.-> C1
@@ -45,25 +45,25 @@ graph TB
         B5 -.-> C4
         B -.-> C5
     end
-    
+
     subgraph "Data Layer"
         D1[(PostgreSQL 15<br/>Prisma ORM)]
         D2[(Redis 7<br/>Cache + Sessions)]
         D3[MinIO<br/>S3-compatible Storage]
     end
-    
+
     subgraph "Monitoring Layer"
         E1[VictoriaMetrics<br/>Time-series DB]
         E2[Grafana<br/>Dashboards + Alerts]
     end
-    
+
     A -->|HTTP/REST| B
     B --> D1
     B --> D2
     B --> D3
     B -->|Push metrics| E1
     E1 --> E2
-    
+
     style A fill:#61dafb,stroke:#333,stroke-width:2px,color:#000
     style B fill:#68a063,stroke:#333,stroke-width:2px,color:#fff
     style D1 fill:#336791,stroke:#333,stroke-width:2px,color:#fff
@@ -84,7 +84,7 @@ sequenceDiagram
     participant R as Redis
     participant M as MinIO
     participant VM as VictoriaMetrics
-    
+
     U->>F: Visite catalogue
     F->>B: GET /api/announcements
     B->>R: Check cache
@@ -98,7 +98,7 @@ sequenceDiagram
     B->>VM: Record metrics (latency, status)
     B-->>F: JSON response
     F-->>U: Display announcements
-    
+
     U->>F: Upload image
     F->>B: POST /api/upload/image
     B->>M: Store image
@@ -124,15 +124,15 @@ graph LR
         G --> H[Prisma ORM<br/>SQL Injection Protection]
         H --> I[Business Logic]
     end
-    
+
     subgraph "Security Services"
         J[Fraud Detection]
         K[Moderation]
     end
-    
+
     I -.-> J
     I -.-> K
-    
+
     style B fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
     style C fill:#ff8787,stroke:#333,stroke-width:2px,color:#fff
     style D fill:#ffa8a8,stroke:#333,stroke-width:2px,color:#000
@@ -152,32 +152,32 @@ graph TB
             A1[React Build<br/>Static Files]
             A --> A1
         end
-        
+
         subgraph "Backend Container"
             B[Node.js 20<br/>Port 5000]
             B1[Express App]
             B --> B1
         end
-        
+
         subgraph "Database Containers"
             C[PostgreSQL 15<br/>Port 5432]
             D[Redis 7<br/>Port 6379]
             E[MinIO<br/>Port 9000/9001]
         end
-        
+
         subgraph "Monitoring Containers"
             F[VictoriaMetrics<br/>Port 8428]
             G[Grafana<br/>Port 3001]
         end
     end
-    
+
     A -->|Proxy /api| B
     B --> C
     B --> D
     B --> E
     B -->|Push metrics| F
     F --> G
-    
+
     style A fill:#009688,stroke:#333,stroke-width:2px,color:#fff
     style B fill:#4caf50,stroke:#333,stroke-width:2px,color:#fff
     style C fill:#2196f3,stroke:#333,stroke-width:2px,color:#fff
@@ -198,11 +198,11 @@ graph TB
     subgraph "Frontend"
         A[React App]
     end
-    
+
     subgraph "API Gateway"
         B[NGINX / Kong<br/>Load Balancer + WAF]
     end
-    
+
     subgraph "Microservices"
         C1[Auth Service<br/>JWT + RBAC]
         C2[Announcement Service<br/>CRUD + Search]
@@ -211,7 +211,7 @@ graph TB
         C5[Chat Service<br/>WebSocket + Redis Pub/Sub]
         C6[Fraud Detection Service<br/>ML Models]
     end
-    
+
     subgraph "Data Layer"
         D1[(PostgreSQL<br/>Auth + Users)]
         D2[(PostgreSQL<br/>Announcements)]
@@ -220,17 +220,17 @@ graph TB
         D5[MinIO<br/>Images]
         D6[(Elasticsearch<br/>Full-text Search)]
     end
-    
+
     subgraph "Message Queue"
         E[RabbitMQ / SQS<br/>Async Processing]
     end
-    
+
     subgraph "External Services"
         F1[Stripe API]
         F2[SendGrid Email]
         F3[AWS S3 / CloudFront]
     end
-    
+
     A -->|HTTPS| B
     B --> C1
     B --> C2
@@ -238,7 +238,7 @@ graph TB
     B --> C4
     B --> C5
     B --> C6
-    
+
     C1 --> D1
     C2 --> D2
     C2 --> D6
@@ -247,14 +247,14 @@ graph TB
     C4 --> F2
     C5 --> D4
     C6 --> E
-    
+
     C2 --> E
     C3 --> E
     C4 --> E
-    
+
     C2 --> D5
     C3 --> F3
-    
+
     style B fill:#ff6b35,stroke:#333,stroke-width:3px,color:#fff
     style C1 fill:#004e89,stroke:#333,stroke-width:2px,color:#fff
     style C2 fill:#1a659e,stroke:#333,stroke-width:2px,color:#fff
@@ -273,7 +273,7 @@ graph LR
     C -->|Phase 3| D[Extract Notification Service]
     D -->|Phase 4| E[Extract Chat Service]
     E -->|Phase 5| F[Full Microservices]
-    
+
     style A fill:#ffd93d,stroke:#333,stroke-width:2px,color:#000
     style F fill:#6bcf7f,stroke:#333,stroke-width:2px,color:#fff
 ```
@@ -301,7 +301,7 @@ graph LR
     I --> J[Deploy Staging]
     J --> K[Smoke Tests]
     K --> L[Deploy Production]
-    
+
     style A fill:#24292e,stroke:#333,stroke-width:2px,color:#fff
     style F fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
     style L fill:#51cf66,stroke:#333,stroke-width:2px,color:#fff
@@ -321,7 +321,7 @@ erDiagram
     ANNOUNCEMENT ||--o{ CONVERSATION : about
     USER ||--o{ CONVERSATION : participates
     CONVERSATION ||--o{ MESSAGE : contains
-    
+
     USER {
         uuid id PK
         string email UK
@@ -329,7 +329,7 @@ erDiagram
         enum role
         datetime createdAt
     }
-    
+
     ANNOUNCEMENT {
         uuid id PK
         string title
@@ -339,7 +339,7 @@ erDiagram
         uuid sellerId FK
         datetime createdAt
     }
-    
+
     PURCHASE {
         uuid id PK
         uuid announcementId FK
@@ -349,7 +349,7 @@ erDiagram
         enum deliveryStatus
         datetime createdAt
     }
-    
+
     CONVERSATION {
         uuid id PK
         uuid user1Id FK
@@ -357,7 +357,7 @@ erDiagram
         uuid announcementId FK
         datetime lastMessageAt
     }
-    
+
     MESSAGE {
         uuid id PK
         uuid conversationId FK
@@ -455,9 +455,9 @@ erDiagram
 
 ### Stratégie de scaling
 
-**0-1k utilisateurs** : Architecture actuelle suffisante  
-**1k-10k utilisateurs** : Load balancer + multi-instances backend  
-**10k-100k utilisateurs** : Microservices + PostgreSQL cluster + CDN  
+**0-1k utilisateurs** : Architecture actuelle suffisante
+**1k-10k utilisateurs** : Load balancer + multi-instances backend
+**10k-100k utilisateurs** : Microservices + PostgreSQL cluster + CDN
 **100k+ utilisateurs** : Kubernetes + auto-scaling + multi-région
 
 ---
@@ -477,7 +477,7 @@ graph TD
     G -->|7. SQL Protection| H[Prisma ORM]
     H -->|8. Business Logic| I[Services]
     I -->|9. Fraud Detection| J[Database]
-    
+
     style A fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
     style J fill:#51cf66,stroke:#333,stroke-width:2px,color:#fff
 ```
@@ -518,6 +518,6 @@ Cette architecture démontre :
 
 ---
 
-*Document rédigé le 31 janvier 2026*  
-*Version : 1.0*  
+*Document rédigé le 31 janvier 2026*
+*Version : 1.0*
 *Auteur : Lead Developer - Collector.shop*

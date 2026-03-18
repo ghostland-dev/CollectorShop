@@ -13,38 +13,38 @@ export enum AuditAction {
   USER_REGISTER = 'USER_REGISTER',
   PASSWORD_CHANGE = 'PASSWORD_CHANGE',
   TOKEN_REFRESH = 'TOKEN_REFRESH',
-  
+
   // Utilisateurs
   USER_CREATE = 'USER_CREATE',
   USER_UPDATE = 'USER_UPDATE',
   USER_DELETE = 'USER_DELETE',
   USER_ROLE_CHANGE = 'USER_ROLE_CHANGE',
-  
+
   // Annonces
   ANNOUNCEMENT_CREATE = 'ANNOUNCEMENT_CREATE',
   ANNOUNCEMENT_UPDATE = 'ANNOUNCEMENT_UPDATE',
   ANNOUNCEMENT_DELETE = 'ANNOUNCEMENT_DELETE',
   ANNOUNCEMENT_PUBLISH = 'ANNOUNCEMENT_PUBLISH',
   ANNOUNCEMENT_ARCHIVE = 'ANNOUNCEMENT_ARCHIVE',
-  
+
   // Achats
   PURCHASE_CREATE = 'PURCHASE_CREATE',
   PURCHASE_CONFIRM = 'PURCHASE_CONFIRM',
   PURCHASE_CANCEL = 'PURCHASE_CANCEL',
   PURCHASE_REFUND = 'PURCHASE_REFUND',
   PURCHASE_DELIVERY_UPDATE = 'PURCHASE_DELIVERY_UPDATE',
-  
+
   // Paiements
   PAYMENT_INITIATE = 'PAYMENT_INITIATE',
   PAYMENT_SUCCESS = 'PAYMENT_SUCCESS',
   PAYMENT_FAILURE = 'PAYMENT_FAILURE',
-  
+
   // Sécurité
   FRAUD_DETECTED = 'FRAUD_DETECTED',
   MODERATION_REJECT = 'MODERATION_REJECT',
   ACCESS_DENIED = 'ACCESS_DENIED',
   RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
-  
+
   // Administration
   ADMIN_ACTION = 'ADMIN_ACTION',
   DATA_EXPORT = 'DATA_EXPORT',
@@ -249,7 +249,7 @@ export function getAuditContext(req: Request): {
 } {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userFromReq = (req as any).user;
-  
+
   return {
     ipAddress: (req.headers?.['x-forwarded-for'] as string) || req.socket?.remoteAddress,
     userAgent: req.headers?.['user-agent'],

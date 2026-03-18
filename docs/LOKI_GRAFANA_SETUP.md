@@ -347,6 +347,6 @@ Vous avez maintenant une **stack d'observabilité complète** :
 
 ---
 
-**Date** : 21 février 2026  
-**Namespace** : collector-shop  
+**Date** : 21 février 2026
+**Namespace** : collector-shop
 **Services** : 11 pods Running (8 déploiements + 1 DaemonSet)

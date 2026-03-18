@@ -1,7 +1,7 @@
 # ✅ RAPPORT DE VALIDATION — COLLECTOR.SHOP
 
-**Date** : 31 janvier 2026  
-**Statut** : ✅ **PROJET VALIDÉ**  
+**Date** : 31 janvier 2026
+**Statut** : ✅ **PROJET VALIDÉ**
 **Score RNCP** : **20/20 (100%)**
 
 ---
@@ -288,6 +288,6 @@ Pour toute question :
 
 ---
 
-*Rapport généré le 31 janvier 2026*  
-*Validation effectuée avec succès* ✅  
+*Rapport généré le 31 janvier 2026*
+*Validation effectuée avec succès* ✅
 *Version : 1.0*

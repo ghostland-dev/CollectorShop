@@ -1,6 +1,6 @@
 # 🚀 PROJET EN COURS D'EXÉCUTION
 
-**Date** : 31 janvier 2026  
+**Date** : 31 janvier 2026
 **Statut** : ✅ **TOUS LES SERVICES OPÉRATIONNELS**
 
 ---
@@ -40,7 +40,7 @@ Endpoints disponibles :
 - **API Docs** : http://localhost:5000/api-docs (si Swagger activé)
 
 ### 📊 Monitoring (Grafana)
-**URL** : http://localhost:3001  
+**URL** : http://localhost:3001
 **Identifiants** : `admin` / `admin123`
 
 Dashboard pré-configuré avec :
@@ -50,7 +50,7 @@ Dashboard pré-configuré avec :
 - Alertes configurées
 
 ### 💾 Stockage (MinIO)
-**URL** : http://localhost:9001  
+**URL** : http://localhost:9001
 **Identifiants** : `minioadmin` / `minioadmin123`
 
 Console MinIO pour gérer :
@@ -388,11 +388,11 @@ Le projet **Collector.shop** est maintenant **100% opérationnel** et prêt pour
 - ✅ Validation RNCP
 - ✅ Présentation orale
 
-**Score RNCP** : 20/20 (100%)  
+**Score RNCP** : 20/20 (100%)
 **Mention** : EXCELLENT 🏆
 
 ---
 
-*Document créé le 31 janvier 2026*  
-*Projet démarré avec succès* ✅  
+*Document créé le 31 janvier 2026*
+*Projet démarré avec succès* ✅
 *Tous les services opérationnels* 🚀

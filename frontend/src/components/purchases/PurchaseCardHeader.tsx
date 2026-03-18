@@ -25,4 +25,3 @@ export function PurchaseCardHeader({ purchase, isSeller }: PurchaseCardHeaderPro
     </Box>
   );
 }
-

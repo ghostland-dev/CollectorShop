@@ -76,7 +76,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
     const context = getAuditContext(req);
 
     logger.info('Nouvel utilisateur créé', { userId: result.user.id, email: result.user.email });
-    
+
     // 🔒 AUDIT LOG: Enregistrement d'un nouvel utilisateur
     logAuditSuccess(AuditAction.USER_REGISTER, result.user.id, {
       userEmail: result.user.email,
@@ -240,7 +240,7 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
       res.status(401).json({ error: 'Non authentifié' });
       return;
     }
-    
+
     const userData = await prisma.user.findUnique({
       where: { id: user.userId },
       select: {

@@ -1,9 +1,9 @@
 # 📊 GRILLE DE NOTATION — COLLECTOR.SHOP
 ## Bloc : Superviser et Assurer le Développement des Applications Logicielles
 
-**Candidat** : MOUYAHADA Ismail  
-**Projet** : Collector.shop — Plateforme de vente d'objets de collection  
-**Date** : Mars 2026  
+**Candidat** : MOUYAHADA Ismail
+**Projet** : Collector.shop — Plateforme de vente d'objets de collection
+**Date** : Mars 2026
 **Score total** : **20/20 — Mention A**
 
 ---
@@ -110,5 +110,5 @@
 
 ---
 
-*Document généré le 17 mars 2026*  
+*Document généré le 17 mars 2026*
 *Projet : Collector.shop — MOUYAHADA Ismail*

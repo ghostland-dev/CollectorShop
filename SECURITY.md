@@ -12,11 +12,11 @@ Collector.shop prend la sécurité très au sérieux. Ce document décrit notre 
 
 Si vous découvrez une faille de sécurité dans Collector.shop, **ne créez PAS d'issue publique**. Contactez-nous de manière privée :
 
-**📧 Email** : security@collector.shop  
-**🔐 PGP Key** : Disponible sur demande  
+**📧 Email** : security@collector.shop
+**🔐 PGP Key** : Disponible sur demande
 **⏱️ SLA de réponse** :
 - **Critique** (CVSS ≥ 9.0) : 24 heures
-- **Élevé** (CVSS 7.0-8.9) : 48 heures  
+- **Élevé** (CVSS 7.0-8.9) : 48 heures
 - **Moyen** (CVSS 4.0-6.9) : 7 jours
 - **Faible** (CVSS < 4.0) : 14 jours
 
@@ -121,15 +121,16 @@ Pour accélérer le traitement, veuillez fournir :
 
 ### Infrastructure & DevSecOps
 
-- **Scans de sécurité automatisés** (CI/CD) :
-  - **Snyk** : Scan des dépendances npm (vulnérabilités CVE)
-  - **Trivy** : Scan des images Docker (OS + dépendances)
-  - **SonarQube** : Analyse statique du code (SAST)
-  - Bloque le merge si vulnérabilité critique détectée
+- **Scans de sécurité automatisés** (pipeline Jenkins) :
+  - **Trivy FS** : Scan du filesystem + secrets (stage `Analyse Sécurité`)
+  - **Trivy Images** : Scan des images Docker construites
+  - **SonarCloud** : Analyse statique SAST (stage `Lint → Qualité`)
+  - **npm audit** : Scan des dépendances (`--audit-level=critical`)
+  - Rapport archivé comme artefact Jenkins
 
 - **Gestion des secrets** :
   - Variables d'environnement (`.env` non commité)
-  - GitHub Secrets pour CI/CD
+  - Credentials Jenkins (SONAR_TOKEN, ARGOCD_TOKEN, DISCORD_WEBHOOK, GITHUB_TOKEN)
   - ⚠️ Vault recommandé pour production (HashiCorp Vault, AWS Secrets Manager)
 
 - **Containerisation** :
@@ -252,11 +253,11 @@ Nous valorisons les contributions de la communauté sécurité :
 
 ## 📞 Contact
 
-**Équipe sécurité** : security@collector.shop  
-**Support général** : support@collector.shop  
+**Équipe sécurité** : security@collector.shop
+**Support général** : support@collector.shop
 **Site web** : https://collector.shop
 
 ---
 
-*Dernière mise à jour : 31 janvier 2026*  
-*Version : 1.0*
+*Dernière mise à jour : 18 mars 2026*
+*Version : 1.1*

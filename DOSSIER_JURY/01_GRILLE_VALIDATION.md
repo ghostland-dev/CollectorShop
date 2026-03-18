@@ -1,7 +1,7 @@
 # ✅ GRILLE DE NOTATION RNCP — COLLECTOR.SHOP
 
-**Date de validation** : 31 janvier 2026  
-**Statut** : ✅ **VALIDÉ — MENTION EXCELLENT**  
+**Date de validation** : 31 janvier 2026
+**Statut** : ✅ **VALIDÉ — MENTION EXCELLENT**
 **Score final** : **20/20 (100%)**
 
 ---
@@ -283,12 +283,12 @@ cat .github/workflows/ci-cd.yml | head -50
 
 Le projet **Collector.shop** est **100% prêt** pour validation RNCP.
 
-**Score final** : **20/20 (100%)**  
-**Mention** : **EXCELLENT** 🏆  
+**Score final** : **20/20 (100%)**
+**Mention** : **EXCELLENT** 🏆
 **Recommandation** : **VALIDATION IMMÉDIATE**
 
 ---
 
-*Grille validée le 31 janvier 2026*  
-*Vérification effectuée avec succès* ✅  
+*Grille validée le 31 janvier 2026*
+*Vérification effectuée avec succès* ✅
 *Version : 1.0*

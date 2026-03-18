@@ -20,7 +20,7 @@ export interface PaymentResult {
 /**
  * Crée une intention de paiement (Stripe Payment Intent)
  * TODO: Intégrer avec Stripe API
- * 
+ *
  * @example
  * ```typescript
  * const paymentIntent = await createPaymentIntent({
@@ -65,7 +65,7 @@ export async function confirmPayment(paymentIntentId: string): Promise<PaymentRe
   // TODO: Intégrer avec Stripe
   // const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
   // const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-  // 
+  //
   // if (paymentIntent.status === 'succeeded') {
   //   return { success: true, paymentIntentId };
   // }
@@ -102,24 +102,23 @@ export async function handleStripeWebhook(_payload: unknown, _signature: string)
 
 /**
  * Instructions pour l'intégration Stripe :
- * 
+ *
  * 1. Installer Stripe :
  *    npm install stripe
- * 
+ *
  * 2. Ajouter les variables d'environnement :
  *    STRIPE_SECRET_KEY=sk_test_...
  *    STRIPE_PUBLISHABLE_KEY=pk_test_...
  *    STRIPE_WEBHOOK_SECRET=whsec_...
- * 
+ *
  * 3. Créer une route pour les webhooks :
  *    router.post('/webhooks/stripe', express.raw({ type: 'application/json' }), handleStripeWebhook);
- * 
+ *
  * 4. Créer une route pour créer un Payment Intent :
  *    router.post('/payment-intents', authenticate, async (req, res) => {
  *      const paymentIntent = await createPaymentIntent({ ... });
  *      res.json({ clientSecret: paymentIntent.clientSecret });
  *    });
- * 
+ *
  * 5. Dans le frontend, utiliser @stripe/stripe-js et @stripe/react-stripe-js
  */
-

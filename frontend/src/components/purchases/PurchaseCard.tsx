@@ -66,4 +66,3 @@ export function PurchaseCard({ purchase, isSeller, onUpdateStatus }: PurchaseCar
     </Card>
   );
 }
-

@@ -24,4 +24,3 @@ export function PurchaseCardDates({ purchase }: PurchaseCardDatesProps) {
     </Box>
   );
 }
-

@@ -354,6 +354,6 @@ Votre stack d'observabilité complète :
 
 ---
 
-**Date** : 21 février 2026  
-**Status** : ✅ Déployé et fonctionnel  
+**Date** : 21 février 2026
+**Status** : ✅ Déployé et fonctionnel
 **Namespace** : collector-shop

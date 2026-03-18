@@ -15,4 +15,3 @@ export function PurchaseStatusChip({ status, showLabel = true }: PurchaseStatusC
     />
   );
 }
-

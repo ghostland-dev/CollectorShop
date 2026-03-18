@@ -1,7 +1,7 @@
 # ⚡ Optimisation CI/CD : Gestion de la Concurrence
 
-**Date** : 22 février 2026  
-**Objectif** : Économiser les minutes GitHub Actions  
+**Date** : 22 février 2026
+**Objectif** : Économiser les minutes GitHub Actions
 **Status** : ✅ **CONFIGURÉ**
 
 ---
@@ -91,7 +91,7 @@ cancel-in-progress: true
 **Sans concurrence** (❌ avant) :
 ```
 Workflow A : 🔄 Running (20 min)
-Workflow B : 🔄 Running (20 min)  
+Workflow B : 🔄 Running (20 min)
 Workflow C : 🔄 Running (20 min)
 Total : 60 minutes consommées
 ```
@@ -283,7 +283,7 @@ git commit --amend -m "Updated commit message"
 git push --force
 ```
 
-**Avant** : Ancien workflow continue (gaspillage)  
+**Avant** : Ancien workflow continue (gaspillage)
 **Après** : Ancien workflow annulé (économie)
 
 ---
@@ -357,7 +357,7 @@ Métriques à suivre :
 - Ratio completed / cancelled
 ```
 
-**Cible** : 
+**Cible** :
 - ✅ 70-80% de workflows cancelled = bon signe (itération rapide)
 - ⚠️ 90%+ cancelled = trop de commits successifs (revoir workflow)
 
@@ -407,6 +407,6 @@ Votre pipeline CI/CD est maintenant **économe et efficace** :
 
 ---
 
-**Date de configuration** : 22 février 2026  
-**Temps de configuration** : ~5 minutes  
+**Date de configuration** : 22 février 2026
+**Temps de configuration** : ~5 minutes
 **Impact** : Économie massive de minutes CI/CD

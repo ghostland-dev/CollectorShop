@@ -158,7 +158,7 @@ const duration = performance.now() - start;
 
 **TypeORM**
 ```typescript
-const users = Array.from({ length: 1000 }, (_, i) => 
+const users = Array.from({ length: 1000 }, (_, i) =>
   userRepository.create({
     email: `user${i}@test.com`,
     passwordHash: 'hashed_password',
@@ -558,6 +558,6 @@ Résultats bruts disponibles dans `/docs/poc-results/`:
 
 ---
 
-*Document rédigé le 31 janvier 2026*  
-*Auteur : Lead Developer - Collector.shop*  
+*Document rédigé le 31 janvier 2026*
+*Auteur : Lead Developer - Collector.shop*
 *Version : 1.0*

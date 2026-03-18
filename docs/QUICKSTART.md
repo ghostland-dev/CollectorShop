@@ -339,5 +339,5 @@ Pour toute question, consultez :
 
 ---
 
-*Document créé le 31 janvier 2026*  
+*Document créé le 31 janvier 2026*
 *Version : 1.0*

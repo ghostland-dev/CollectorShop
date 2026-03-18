@@ -74,4 +74,3 @@ export function isValidExpiryDate(expiryDate: string): boolean {
 export function isValidCvv(cvv: string): boolean {
   return /^\d{3,4}$/.test(cvv);
 }
-

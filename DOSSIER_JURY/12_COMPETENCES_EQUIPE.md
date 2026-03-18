@@ -1,7 +1,7 @@
 # 👥 Cartographie des Compétences — Collector.shop
 
-**Date** : 21 février 2026  
-**Version** : 1.0  
+**Date** : 21 février 2026
+**Version** : 1.0
 **Projet** : Collector.shop V1 (POC) → V2 (Production)
 
 ---
@@ -26,10 +26,10 @@
 
 ### 1.2 Objectifs de la cartographie
 
-✅ Identifier les compétences nécessaires  
-✅ Évaluer l'équipe actuelle  
-✅ Planifier la montée en compétence  
-✅ Budgeter les formations  
+✅ Identifier les compétences nécessaires
+✅ Évaluer l'équipe actuelle
+✅ Planifier la montée en compétence
+✅ Budgeter les formations
 ✅ Éviter le "mouton à 5 pattes"
 
 ---
@@ -309,7 +309,7 @@
 | Phase 2 | M3-M6 | 8 500€ | 11 500€ |
 | Phase 3 | M7-M12 | 7 400€ | **18 900€** |
 
-**Budget annuel** : **18 900€**  
+**Budget annuel** : **18 900€**
 **Par personne** : ~4 725€/an (réaliste pour startup)
 
 ### 4.2 Formations Continues (Année 2+)
@@ -355,7 +355,7 @@
 | Kafka | ❌ Aucune | **Moyen** | Formation M5 (Phase 2) |
 | Distributed tracing | ❌ Aucune | **Faible** | Formation M6+ (Phase 3) |
 
-**Conclusion V2** : 
+**Conclusion V2** :
 - ✅ Base solide pour démarrer
 - 🎓 **6 mois de formation** nécessaires
 - 💰 Budget formation : 18 900€
@@ -371,7 +371,7 @@
 | **Recrutement Senior DevOps** | 60k€/an | 3-6 mois (recrutement) | Expertise immédiate, Mentorat | Coût élevé, Turnover possible |
 | **Mixte (Formation + Junior DevOps #2)** | 40k€/an + 10k€ formation | 6 mois | Équilibre coût/compétence | Gestion 2 juniors |
 
-**Recommandation** : 
+**Recommandation** :
 - **V1 → V2 (6 premiers mois)** : Formation interne (18 900€)
 - **V2+ (après M6)** : Recruter Senior DevOps #2 si croissance confirmée
 
@@ -468,10 +468,10 @@
 
 ### Synthèse
 
-✅ **Équipe V1** : 4 personnes suffisantes et qualifiées  
-✅ **Budget formation** : 18 900€ (réaliste)  
-✅ **Timeline** : 6-12 mois de montée en compétence  
-✅ **Pas de "mouton à 5 pattes"** : Stack cohérente  
+✅ **Équipe V1** : 4 personnes suffisantes et qualifiées
+✅ **Budget formation** : 18 900€ (réaliste)
+✅ **Timeline** : 6-12 mois de montée en compétence
+✅ **Pas de "mouton à 5 pattes"** : Stack cohérente
 ✅ **Cohérence architecture** : V1 OK, V2 nécessite formation
 
 ### Risques identifiés
@@ -494,6 +494,6 @@
 
 ---
 
-**Document validé par** : Équipe Collector.shop  
-**Dernière mise à jour** : 21 février 2026  
+**Document validé par** : Équipe Collector.shop
+**Dernière mise à jour** : 21 février 2026
 **Version** : 1.0

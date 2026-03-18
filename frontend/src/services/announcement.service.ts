@@ -52,21 +52,21 @@ export const announcementService = {
   }): Promise<AnnouncementsResponse> => {
     try {
       const response = await apiClient.get<AnnouncementsResponse>('/announcements', { params });
-      
+
       // Vérifier que la réponse a le bon format
       if (!response.data || !Array.isArray(response.data.announcements)) {
         console.error('Format de réponse invalide:', response.data);
         throw new Error('Format de réponse invalide de l\'API');
       }
-      
+
       return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération des annonces:', error);
-      
+
       if (error instanceof ApiError) {
         throw error;
       }
-      
+
       throw new Error(error instanceof Error ? error.message : 'Erreur lors du chargement des annonces');
     }
   },

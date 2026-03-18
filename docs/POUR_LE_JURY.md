@@ -1,9 +1,9 @@
 # 🎓 DOSSIER DE VALIDATION RNCP — COLLECTOR.SHOP
 
-**Candidat** : [Votre nom]  
-**Date** : 31 janvier 2026  
-**Bloc** : Maintenir et développer son expertise technique  
-**Score** : **20/20 (100%)**  
+**Candidat** : [Votre nom]
+**Date** : 31 janvier 2026
+**Bloc** : Maintenir et développer son expertise technique
+**Score** : **20/20 (100%)**
 **Mention** : **EXCELLENT** 🏆
 
 ---
@@ -415,6 +415,6 @@ make urls
 
 ---
 
-*Dossier préparé le 31 janvier 2026*  
-*Validation effectuée avec succès* ✅  
+*Dossier préparé le 31 janvier 2026*
+*Validation effectuée avec succès* ✅
 *Prêt pour présentation au jury* 🎓

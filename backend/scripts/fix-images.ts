@@ -27,13 +27,13 @@ async function fixImages() {
   const announcements = await prisma.announcement.findMany();
 
   for (const announcement of announcements) {
-    const hasPlaceholder = announcement.images.some((img) => 
+    const hasPlaceholder = announcement.images.some((img) =>
       img && (img.includes('via.placeholder.com') || img.includes('placeholder') || img.includes('minio:9000'))
     );
 
     if (hasPlaceholder) {
       let newImages: string[] = [];
-      
+
       // Sélectionner des images selon la catégorie
       if (announcement.category === 'Philatélie') {
         newImages = [pexelsImages.philatelie[0]];

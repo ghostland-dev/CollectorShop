@@ -9,7 +9,7 @@ class VictoriaMetricsService {
   constructor() {
     this.url = process.env.VICTORIAMETRICS_URL || 'http://localhost:8428/api/v1/import/prometheus';
     this.enabled = !!process.env.VICTORIAMETRICS_URL;
-    
+
     if (this.enabled) {
       this.startPushing();
       logger.info('VictoriaMetrics service initialized', { url: this.url });
@@ -23,7 +23,7 @@ class VictoriaMetricsService {
       const metrics = await metricsService.getMetrics();
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       await fetch(this.url, {
         method: 'POST',
         headers: {
@@ -32,7 +32,7 @@ class VictoriaMetricsService {
         body: metrics,
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
     } catch (error) {
       logger.error('Erreur lors du push des métriques vers VictoriaMetrics', { error });

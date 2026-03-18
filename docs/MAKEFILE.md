@@ -6,11 +6,11 @@ Le **Makefile** simplifie toutes les opérations courantes du projet avec plus d
 
 ### Avantages
 
-✅ **Simplicité** : Une seule commande au lieu de plusieurs  
-✅ **Cohérence** : Même commande sur tous les environnements  
-✅ **Documentation** : `make help` affiche toutes les commandes  
-✅ **Productivité** : Automatisation des tâches répétitives  
-✅ **Sécurité** : Confirmations pour les actions destructives  
+✅ **Simplicité** : Une seule commande au lieu de plusieurs
+✅ **Cohérence** : Même commande sur tous les environnements
+✅ **Documentation** : `make help` affiche toutes les commandes
+✅ **Productivité** : Automatisation des tâches répétitives
+✅ **Sécurité** : Confirmations pour les actions destructives
 
 ---
 
@@ -472,5 +472,5 @@ Pour toute question sur le Makefile :
 
 ---
 
-*Document créé le 31 janvier 2026*  
+*Document créé le 31 janvier 2026*
 *Version : 1.0*

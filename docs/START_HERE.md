@@ -255,6 +255,6 @@ Le projet **Collector.shop** est **100% prêt** pour validation RNCP.
 
 ---
 
-*Guide créé le 31 janvier 2026*  
-*Projet validé avec succès* ✅  
+*Guide créé le 31 janvier 2026*
+*Projet validé avec succès* ✅
 *Prêt pour présentation au jury* 🎓

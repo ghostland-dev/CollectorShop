@@ -286,4 +286,3 @@ function AnnouncementsGrid({ announcements, isAdmin, navigate, onDeleteClick, de
     </Grid>
   );
 }
-

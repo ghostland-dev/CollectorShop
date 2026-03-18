@@ -204,4 +204,3 @@ export async function detectFraudForPurchase(
     action,
   };
 }
-

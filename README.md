@@ -46,7 +46,7 @@ Collector.shop est une plateforme de vente d'objets de collection entre particul
 | **Internationalisation (i18n)** | ✅ Implémenté | Complète | `frontend/src/i18n/config.ts`<br>`frontend/src/i18n/locales/fr.json`<br>`frontend/src/i18n/locales/en.json`<br>`frontend/src/components/LanguageSelector.tsx` | react-i18next intégré, français/anglais, détection automatique, sélecteur de langue dans la navigation |
 | **Accessibilité (a11y)** | ✅ Implémenté | Complète | `frontend/src/components/Layout.tsx`<br>`frontend/src/styles/globals.css`<br>Material-UI (ARIA par défaut) | Attributs ARIA complets, navigation clavier améliorée, skip links, focus visible, contraste amélioré, landmarks ARIA, screen reader support |
 | **Intégration fraud detection v1** | ✅ Implémenté | Règles basiques | `backend/src/services/fraud-detection.service.ts`<br>`backend/src/routes/purchase.routes.ts` | Détection patterns suspects, auto-achat, doublons, score de risque, actions (ALLOW/REVIEW/BLOCK) |
-| **Architecture évolutive** | ✅ Implémenté | Complète | `docker-compose.yml`<br>Structure modulaire (routes séparées)<br>Monitoring (VictoriaMetrics)<br>CI/CD (`.github/workflows/ci-cd.yml`) | Prêt pour microservices, containerisation, monitoring, pipeline automatisé |
+| **Architecture évolutive** | ✅ Implémenté | Complète | `docker-compose.yml`<br>Structure modulaire (routes séparées)<br>Monitoring (VictoriaMetrics + Loki)<br>`Jenkinsfile` (CI/CD Jenkins 8 stages)<br>`k8s/` (Kubernetes + ArgoCD GitOps) | Microservices-ready, Kubernetes + GitOps ArgoCD, pipeline Jenkins 21 jobs parallèles |
 
 **Légende** :
 - ✅ **Implémenté** : Fonctionnalité complètement développée et opérationnelle
@@ -291,11 +291,11 @@ make urls
 - Métriques : HTTP requests, duration, errors, DB queries, cache hits/misses
 
 #### 1.4 Taux d'erreurs / MTTR (Mean Time To Recovery)
-**Métrique** : 
+**Métrique** :
 - Taux d'erreurs HTTP 5xx : < 0.1%
 - MTTR : < 15 minutes
 
-**Valeur réelle** : 
+**Valeur réelle** :
 - Taux d'erreurs HTTP 5xx = 0.05% ✅
 - MTTR = Non mesuré ⚠️
 
@@ -381,7 +381,7 @@ make urls
 
 #### 2.3 Outils recommandés
 
-- **CI/CD** : GitHub Actions, GitLab CI
+- **CI/CD** : Jenkins (pipeline principal), GitHub Actions (backup)
 - **Tests** : Jest, Supertest, Playwright
 - **Analyse** : SonarQube, ESLint, Prettier
 - **Sécurité** : Snyk, OWASP ZAP, Trivy, Snyk Container
@@ -556,27 +556,27 @@ graph TB
     subgraph "Frontend"
         A[React App] --> B[API Gateway]
     end
-    
+
     subgraph "Backend Services"
         B --> C[Auth Service]
         B --> D[Announcement Service]
         B --> E[Payment Service]
         B --> F[Notification Service]
     end
-    
+
     subgraph "Data Layer"
         C --> G[(PostgreSQL)]
         D --> G
         E --> G
         F --> H[(Redis)]
     end
-    
+
     subgraph "External Services"
         E --> I[Stripe API]
         F --> J[Email Service]
         F --> K[WebSocket Server]
     end
-    
+
     subgraph "Monitoring"
         L[Prometheus] --> M[Grafana]
         N[Sentry] --> O[Alerting]
@@ -721,7 +721,7 @@ Tous les services sont orchestrés avec des health checks, dépendances et volum
 
 - **Health checks** : Tous les services disposent de health checks configurés
 - **Monitoring** : VictoriaMetrics et Grafana permettent de surveiller la disponibilité en temps réel
-- **Métriques de disponibilité** : 
+- **Métriques de disponibilité** :
   - Taux d'erreurs HTTP 5xx : 0.05% (objectif < 0.1% ✅)
   - Temps de réponse P95 : 180ms (objectif < 200ms ✅)
   - Connexions actives : Suivi en temps réel via métriques Prometheus
@@ -807,16 +807,16 @@ Tous les services sont orchestrés avec des health checks, dépendances et volum
    ```bash
    # Assurez-vous que l'application est démarrée
    docker-compose up -d
-   
+
    # Exécuter le test de charge
    npm run load-test
-   
+
    # Ou avec Artillery directement
    artillery run tests/load-tests/artillery.yml
-   
+
    # Avec une URL personnalisée
    BASE_URL=http://localhost:5000 npm run load-test
-   
+
    # Générer un rapport HTML
    npm run load-test:report
    ```
@@ -824,7 +824,7 @@ Tous les services sont orchestrés avec des health checks, dépendances et volum
    **Structure des fichiers** :
    - `tests/load-tests/artillery.yml` : Configuration YAML des scénarios de test
    - `tests/load-tests/load-test.ts` : Fonctions TypeScript personnalisées pour les scénarios complexes
-   
+
    Voir `tests/README.md` pour plus d'informations sur l'organisation des tests.
 
    Le script teste :
@@ -848,7 +848,22 @@ Le POC démontre sa capacité à gérer une montée en charge progressive tout e
 
 ### 8. Pipeline CI/CD opérationnel
 
-Voir `.github/workflows/ci-cd.yml`
+Le pipeline est implémenté dans **Jenkins** (voir `Jenkinsfile`) avec 8 stages en parallèle maximal :
+
+```
+Start → Checkout → Lint/Build/Qualité/SonarCloud (parallèle) → Tests Unitaires (parallèle)
+      → Analyse Sécurité (parallèle) → Build Docker (parallèle) → ArgoCD GitOps → Load Tests
+```
+
+**Parallélisme clé** :
+- Lint Backend + Lint Frontend + Qualité npm + SonarCloud + Compilation × 2 → en parallèle
+- Tests Backend (DB + Jest) + Tests Frontend (jsdom) → en parallèle
+- Trivy FS + npm audit → en parallèle
+- Build Image Backend + Image Frontend → en parallèle
+
+**GitOps ArgoCD** : chaque build Jenkins met à jour  et déclenche un sync ArgoCD.
+
+Voir aussi : `.github/workflows/ci-cd.yml` (pipeline GitHub Actions secondaire)
 
 ---
 

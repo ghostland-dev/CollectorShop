@@ -53,4 +53,3 @@ export function validatePaymentForm(formData: PaymentFormData): ValidationResult
     errors,
   };
 }
-

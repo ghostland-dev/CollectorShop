@@ -1,7 +1,7 @@
 # 🏗️ Infrastructure Minikube — ArgoCD + Netdata + Jenkins + Gitea
 
-**Projet** : Collector.shop — Plateforme de vente d'objets de collection  
-**Date** : Mars 2026  
+**Projet** : Collector.shop — Plateforme de vente d'objets de collection
+**Date** : Mars 2026
 **Stack** : Minikube · Gitea (Git local) · ArgoCD (GitOps CD) · Jenkins (CI/CD) · Netdata (Monitoring) · HTTPS (Nginx Ingress + TLS)
 
 ---
@@ -65,7 +65,7 @@
 
 ## 🌐 URLs & Accès (HTTPS)
 
-> Tous les alias sont définis dans `/etc/hosts` → `192.168.49.2` (IP Minikube).  
+> Tous les alias sont définis dans `/etc/hosts` → `192.168.49.2` (IP Minikube).
 > Accès HTTPS standard (port 443) via proxy nginx + iptables DNAT.
 
 | Service | URL HTTPS | Identifiants |
@@ -122,7 +122,7 @@ kubectl get secret shopcollector-tls -n collector-shop
 
 ### Accès HTTPS (port 443 standard)
 
-Un proxy nginx sur l'hôte écoute sur le port 443 et redirige vers l'Ingress Minikube (NodePort 32390).  
+Un proxy nginx sur l'hôte écoute sur le port 443 et redirige vers l'Ingress Minikube (NodePort 32390).
 Les règles iptables DNAT redirigent `192.168.49.2:443` → `127.0.0.1:443`.
 
 | Protocole | Port | Rôle |

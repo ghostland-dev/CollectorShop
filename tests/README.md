@@ -43,4 +43,3 @@ Les tests unitaires et d'intégration sont situés dans les workspaces respectif
 - **Frontend** : `frontend/src/__tests__/`
 
 Voir les README des workspaces pour plus d'informations.
-

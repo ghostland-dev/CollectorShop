@@ -16,4 +16,3 @@ export function DeliveryStatusChip({ status, showLabel = true }: DeliveryStatusC
     />
   );
 }
-

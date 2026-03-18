@@ -26,7 +26,7 @@ class ApiClient {
     config: RequestConfig = {}
   ): Promise<ApiResponse<T>> {
     const { params, _retry, ...fetchConfig } = config;
-    
+
     // Construire l'URL avec les paramètres de requête
     let fullUrl = `${API_BASE_URL}${url}`;
     if (params) {
@@ -48,7 +48,7 @@ class ApiClient {
       'Content-Type': 'application/json',
       ...(fetchConfig.headers as Record<string, string>),
     });
-    
+
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
@@ -64,7 +64,7 @@ class ApiClient {
         if (response.status === 401 && !_retry) {
           return this.handle401Error(url, config) as Promise<ApiResponse<T>>;
         }
-        
+
         const errorData = await this.parseErrorResponse(response);
         throw new ApiError(
           errorData.message || `HTTP ${response.status}: ${response.statusText}`,
@@ -83,7 +83,7 @@ class ApiClient {
       if (error instanceof ApiError) {
         throw error;
       }
-      
+
       // Gérer les erreurs réseau
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new ApiError(
@@ -92,7 +92,7 @@ class ApiClient {
           { error: 'Network Error' }
         );
       }
-      
+
       throw error;
     }
   }
@@ -110,8 +110,8 @@ class ApiClient {
   }
 
   private shouldHandle401Error(url: string): boolean {
-    return !url.includes('/auth/login') && 
-           !url.includes('/auth/refresh') && 
+    return !url.includes('/auth/login') &&
+           !url.includes('/auth/refresh') &&
            !url.includes('/auth/register');
   }
 
@@ -148,9 +148,9 @@ class ApiClient {
 
   private queueRequest(url: string, originalConfig: RequestConfig): Promise<ApiResponse<unknown>> {
     return new Promise<string>((resolve, reject) => {
-      this.failedQueue.push({ 
-        resolve: (value?: string) => resolve(value || ''), 
-        reject 
+      this.failedQueue.push({
+        resolve: (value?: string) => resolve(value || ''),
+        reject
       });
     })
       .then((token: string) => {
@@ -172,7 +172,7 @@ class ApiClient {
   ): Promise<ApiResponse<unknown>> {
     const response = await authService.refreshToken(refreshToken);
     const { accessToken, refreshToken: newRefreshToken, user } = response;
-    
+
     useAuthStore.getState().setTokens(accessToken, newRefreshToken);
     if (user) {
       useAuthStore.getState().setAuth(user, accessToken, newRefreshToken);

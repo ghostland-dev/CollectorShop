@@ -1,8 +1,8 @@
 # 🎯 AUDIT FINAL — COLLECTOR.SHOP POC
 
-**Date d'audit** : 31 janvier 2026  
-**Auditeur** : Senior Lead Developer & DevSecOps Architect  
-**Projet** : Collector.shop - Marketplace entre collectionneurs  
+**Date d'audit** : 31 janvier 2026
+**Auditeur** : Senior Lead Developer & DevSecOps Architect
+**Projet** : Collector.shop - Marketplace entre collectionneurs
 **Contexte** : Validation RNCP Niveau 7 - Bloc "Superviser et assurer le développement des applications logicielles"
 
 ---
@@ -359,8 +359,8 @@ Les corrections implémentées ont transformé un projet déjà solide (B+) en u
 
 ---
 
-*Audit réalisé le 31 janvier 2026*  
-*Auditeur : Senior Lead Developer & DevSecOps Architect*  
+*Audit réalisé le 31 janvier 2026*
+*Auditeur : Senior Lead Developer & DevSecOps Architect*
 *Version finale : 1.0*
 
 ---

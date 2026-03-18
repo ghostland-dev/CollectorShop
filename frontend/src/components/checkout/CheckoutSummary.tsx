@@ -67,4 +67,3 @@ export function CheckoutSummary({ items, total, isProcessing, onSubmit }: Checko
     </Paper>
   );
 }
-
