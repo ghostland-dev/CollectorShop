@@ -705,48 +705,46 @@ except Exception as e:
                 stage('Tests de Charge (Locust)') {
                     steps {
                         sh """
-                            echo "=== Tests de charge Locust ==="
+                            echo "=== Tests de charge Locust (via Docker) ==="
                             BACKEND="${MINIKUBE_BACKEND_URL}"
+                            MINIKUBE_IP=\$(minikube ip 2>/dev/null || echo "192.168.49.2")
+                            WORKSPACE_ABS=\$(pwd)
                             LOCUST_HTML="locust-report-${BUILD_NUMBER}.html"
                             LOCUST_CSV="locust-stats-${BUILD_NUMBER}"
-                            LOCUST_FILE="tests/load-tests/locustfile.py"
-
-                            # Installer Locust si absent
-                            export PATH="\$HOME/.local/bin:\$PATH"
-                            if ! command -v locust > /dev/null 2>&1; then
-                                echo "Installation de Locust..."
-                                pip3 install --quiet --user --break-system-packages \\
-                                    -r tests/load-tests/requirements-locust.txt
-                            fi
 
                             # Vérifier que le backend répond
-                            if ! curl -sf \${BACKEND}/health --max-time 5 > /dev/null 2>&1; then
+                            if ! curl -sk \${BACKEND}/health --max-time 5 > /dev/null 2>&1; then
                                 echo "⚠️  Backend non disponible — tests Locust ignorés"
                                 exit 0
                             fi
 
-                            echo "▶  Lancement Locust : 50 users / spawn-rate 5 / 60s"
-                            export PATH="\$HOME/.local/bin:\$PATH"
-                            locust \\
-                                -f \${LOCUST_FILE} \\
-                                --host \${BACKEND} \\
-                                --headless \\
-                                --users 50 \\
-                                --spawn-rate 5 \\
-                                --run-time 60s \\
-                                --html \${LOCUST_HTML} \\
-                                --csv \${LOCUST_CSV} \\
-                                --csv-full-history \\
-                                --only-summary \\
-                                --loglevel WARNING || true
+                            echo "▶  Lancement Locust (Docker) : 50 users / spawn-rate 5 / 60s"
+                            docker run --rm \\
+                                --network host \\
+                                --add-host "api.shopcollector.local:\${MINIKUBE_IP}" \\
+                                --add-host "shopcollector.local:\${MINIKUBE_IP}" \\
+                                -v "\${WORKSPACE_ABS}/tests/load-tests:/mnt/locust:ro" \\
+                                -v "\${WORKSPACE_ABS}:/mnt/workspace" \\
+                                locustio/locust \\
+                                    -f /mnt/locust/locustfile.py \\
+                                    --host \${BACKEND} \\
+                                    --headless \\
+                                    --users 50 \\
+                                    --spawn-rate 5 \\
+                                    --run-time 60s \\
+                                    --html /mnt/workspace/\${LOCUST_HTML} \\
+                                    --csv /mnt/workspace/\${LOCUST_CSV} \\
+                                    --csv-full-history \\
+                                    --only-summary \\
+                                    --loglevel WARNING || true
 
-                            # Résumé CSV → console
+                            # Résumé CSV → console (python3 est disponible dans Jenkins)
                             echo "=== Résumé Locust ==="
                             python3 -c "
 import csv, os, sys
 stats_file = '\${LOCUST_CSV}_stats.csv'
 if not os.path.exists(stats_file):
-    print('(fichier stats absent)')
+    print('(fichier stats absent — Locust non exécuté)')
     sys.exit(0)
 with open(stats_file) as f:
     rows = list(csv.DictReader(f))
@@ -763,12 +761,12 @@ rps      = agg.get('Requests/s', 'N/A')
 err_pct  = round(fail / req * 100, 1) if req else 0
 ok = err_pct < 5 and (p95 == 'N/A' or float(p95) < 500)
 print(f'Requêtes totales : {req}')
-print(f'Échecs           : {fail}  ({err_pct} %)')
-print(f'Débit            : {rps} req/s')
+print(f'Echecs           : {fail}  ({err_pct} %)')
+print(f'Debit            : {rps} req/s')
 print(f'P50 latence      : {p50} ms')
 print(f'P95 latence      : {p95} ms')
 print(f'P99 latence      : {p99} ms')
-print(f'Verdict          : {\"✅ OK\" if ok else \"⚠️  DÉGRADÉ\"}')
+print(f'Verdict          : {\"OK\" if ok else \"DEGRADE\"}')
 " || echo "(résumé non disponible)"
                         """
                     }

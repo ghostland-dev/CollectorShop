@@ -18,8 +18,12 @@ Exécution headless (CI) :
 from __future__ import annotations
 
 import random
+import urllib3
 from locust import HttpUser, TaskSet, between, events, tag, task
 from locust.runners import MasterRunner, WorkerRunner
+
+# Désactiver les warnings SSL (certificat mkcert auto-signé en local/CI)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 # ── Données de test ────────────────────────────────────────────────────────────
@@ -170,6 +174,9 @@ class AnonymousBrowser(HttpUser):
     tasks     = [CatalogTasks]
     wait_time = between(1, 3)
 
+    def on_start(self) -> None:
+        self.client.verify = False
+
 
 class CatalogSearcher(HttpUser):
     """Utilisateur orienté recherche."""
@@ -178,6 +185,9 @@ class CatalogSearcher(HttpUser):
     tasks     = [SearchTasks]
     wait_time = between(0.5, 2)
 
+    def on_start(self) -> None:
+        self.client.verify = False
+
 
 class HealthProbe(HttpUser):
     """Sonde technique (monitoring, CI)."""
@@ -185,6 +195,9 @@ class HealthProbe(HttpUser):
     weight    = 25
     tasks     = [HealthTasks]
     wait_time = between(2, 5)
+
+    def on_start(self) -> None:
+        self.client.verify = False
 
 
 # ── Hooks événements ──────────────────────────────────────────────────────────
