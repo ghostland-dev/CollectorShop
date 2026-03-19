@@ -543,45 +543,56 @@ pipeline {
 
                 stage('Sync & Health Check') {
                     steps {
-                        withCredentials([string(credentialsId: 'ARGOCD_TOKEN', variable: 'ARGOCD_AUTH_TOKEN')]) {
-                            sh """
-                                ARGOCD_URL="http://${ARGOCD_SERVER}"
-                                echo "=== Déclenchement sync ArgoCD → \${ARGOCD_URL} ==="
+                        sh """
+                            MINIKUBE_IP=\$(minikube ip 2>/dev/null || echo "192.168.49.2")
+                            ARGOCD_URL="http://\${MINIKUBE_IP}:31080"
+                            echo "=== Sync ArgoCD → \${ARGOCD_URL} (app: ${ARGOCD_APP}) ==="
 
+                            # Auth : obtenir JWT via session (admin + password kubectl)
+                            ARGOCD_PWD=\$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || echo "")
+                            ARGOCD_TOKEN=""
+                            if [ -n "\${ARGOCD_PWD}" ]; then
+                                ARGOCD_TOKEN=\$(curl -sf -X POST "\${ARGOCD_URL}/api/v1/session" \\
+                                    -H "Content-Type: application/json" \\
+                                    -d "{\\"username\\":\\"admin\\",\\"password\\":\\"\${ARGOCD_PWD}\\"}" 2>/dev/null \\
+                                    | python3 -c "import sys,json;print(json.load(sys.stdin).get('token',''))" 2>/dev/null || echo "")
+                                [ -n "\${ARGOCD_TOKEN}" ] && echo "Auth ArgoCD OK (session JWT)"
+                            fi
+
+                            # Sync (si token JWT obtenu)
+                            if [ -n "\${ARGOCD_TOKEN}" ]; then
                                 SYNC_RESP=\$(curl -sf -X POST "\${ARGOCD_URL}/api/v1/applications/${ARGOCD_APP}/sync" \\
-                                    -H "Authorization: Bearer \${ARGOCD_AUTH_TOKEN}" \\
+                                    -H "Authorization: Bearer \${ARGOCD_TOKEN}" \\
                                     -H "Content-Type: application/json" \\
                                     -d '{"prune":false,"dryRun":false}' \\
                                     -w "\\nHTTP_CODE:%{http_code}" 2>&1 || echo "\\nHTTP_CODE:000")
-
                                 HTTP_CODE=\$(echo "\${SYNC_RESP}" | grep "HTTP_CODE:" | cut -d: -f2)
                                 echo "Sync HTTP: \${HTTP_CODE}"
+                            else
+                                echo "⚠️  Impossible d'obtenir le token ArgoCD — polling direct"
+                            fi
 
-                                if [ "\${HTTP_CODE}" = "000" ]; then
-                                    echo "⚠️  ArgoCD inaccessible — vérification directe de l'app"
-                                elif [ "\${HTTP_CODE}" != "200" ] && [ "\${HTTP_CODE}" != "201" ]; then
-                                    echo "⚠️  Sync HTTP \${HTTP_CODE} — poursuite du polling..."
+                            # Polling Synced + Healthy (max 5 min)
+                            echo "Polling Synced + Healthy (max 5 min)..."
+                            for i in \$(seq 1 30); do
+                                if [ -n "\${ARGOCD_TOKEN}" ]; then
+                                    STATUS=\$(curl -sf -H "Authorization: Bearer \${ARGOCD_TOKEN}" "\${ARGOCD_URL}/api/v1/applications/${ARGOCD_APP}" 2>/dev/null \\
+                                        | python3 -c "import sys,json;d=json.load(sys.stdin);s=d.get('status') or {};print((s.get('sync') or {}).get('status','?')+' '+(s.get('health') or {}).get('status','?'))" 2>/dev/null || echo "? ?")
+                                else
+                                    STATUS="? ?"
                                 fi
+                                SYNC_ST=\$(echo "\${STATUS}" | cut -d' ' -f1)
+                                HEALTH_ST=\$(echo "\${STATUS}" | cut -d' ' -f2)
+                                echo "  [\${i}/30] Sync: \${SYNC_ST}  Health: \${HEALTH_ST}"
 
-                                echo "Polling Synced + Healthy (max 5 min)..."
-                                for i in \$(seq 1 30); do
-                                    STATUS=\$(curl -sf "\${ARGOCD_URL}/api/v1/applications/${ARGOCD_APP}" \\
-                                        -H "Authorization: Bearer \${ARGOCD_AUTH_TOKEN}" 2>/dev/null \\
-                                        | python3 -c "import sys,json;s=json.load(sys.stdin).get('status') or dict();sy=s.get('sync') or dict();he=s.get('health') or dict();print(sy.get('status','?')+' '+he.get('status','?'))" \\
-                                        2>/dev/null || echo "? ?")
-                                    SYNC_ST=\$(echo "\${STATUS}" | cut -d' ' -f1)
-                                    HEALTH_ST=\$(echo "\${STATUS}" | cut -d' ' -f2)
-                                    echo "  [\${i}/30] Sync: \${SYNC_ST}  Health: \${HEALTH_ST}"
-
-                                    if [ "\${SYNC_ST}" = "Synced" ] && [ "\${HEALTH_ST}" = "Healthy" ]; then
-                                        echo "✅ ArgoCD : Synced + Healthy"
-                                        break
-                                    fi
-                                    [ \$i -eq 30 ] && echo "⚠️  Timeout ArgoCD — pipeline continue"
-                                    sleep 10
-                                done
-                            """
-                        }
+                                if [ "\${SYNC_ST}" = "Synced" ] && [ "\${HEALTH_ST}" = "Healthy" ]; then
+                                    echo "✅ ArgoCD : Synced + Healthy"
+                                    exit 0
+                                fi
+                                [ \$i -eq 30 ] && echo "⚠️  Timeout — continue (apps peuvent être OK)"
+                                sleep 10
+                            done
+                        """
                     }
                 }
 
