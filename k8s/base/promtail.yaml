@@ -16,11 +16,14 @@ data:
       - url: http://loki:3100/loki/api/v1/push
 
     scrape_configs:
-      # Scrape logs from all pods
+      # Scrape logs from collector-shop namespaces only (reduce file watchers → avoid "too many open files")
       - job_name: kubernetes-pods
         kubernetes_sd_configs:
           - role: pod
         relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace]
+            regex: collector-shop(-dev|-staging)?$
+            action: keep
           - source_labels: [__meta_kubernetes_pod_node_name]
             target_label: __host__
           - action: labelmap
