@@ -14,7 +14,8 @@ resources:
   - victoriametrics.yaml
   - grafana.yaml
   - loki.yaml
-  - promtail.yaml
+  # promtail désactivé: "too many open files" sur Minikube (1 nœud)
+  # - promtail.yaml
   - hpa.yaml
   - tls-secret.yaml
   - ingress.yaml

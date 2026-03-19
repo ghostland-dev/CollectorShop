@@ -69,31 +69,6 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 2
-  # Promtail RBAC cluster-scoped : renommer par env pour éviter conflit ArgoCD
-  - target:
-      kind: ClusterRole
-      name: promtail
-    patch: |-
-      - op: replace
-        path: /metadata/name
-        value: promtail-staging
-      - op: remove
-        path: /metadata/annotations
-  - target:
-      kind: ClusterRoleBinding
-      name: promtail
-    patch: |-
-      - op: replace
-        path: /metadata/name
-        value: promtail-staging
-      - op: remove
-        path: /metadata/annotations
-      - op: replace
-        path: /roleRef/name
-        value: promtail-staging
-      - op: replace
-        path: /subjects/0/namespace
-        value: collector-shop-staging
   # Staging utilise ClusterIP (accès via Ingress uniquement) — évite conflit NodePort
   - target:
       kind: Service
