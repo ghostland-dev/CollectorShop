@@ -24,6 +24,9 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
+# Install OpenSSL for Prisma compatibility
+RUN apk add --no-cache openssl libc6-compat
+
 # Install only production dependencies
 COPY package*.json ./
 RUN npm install --omit=dev
@@ -36,6 +39,10 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
+
+# Create logs directory with proper permissions
+RUN mkdir -p logs uploads && \
+    chown -R nodejs:nodejs logs uploads
 
 USER nodejs
 

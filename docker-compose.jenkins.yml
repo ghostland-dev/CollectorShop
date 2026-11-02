@@ -1,0 +1,63 @@
+# Docker Compose - Jenkins CI/CD Local
+# Collector.shop - Pipeline d'intégration continue
+#
+# Usage:
+#   Démarrer : make jenkins-start
+#   Arrêter  : make jenkins-stop
+#   Logs     : make jenkins-logs
+#   Interface: http://localhost:8080 (admin / admin)
+#
+# NOTE: Ce fichier est SÉPARÉ du docker-compose.yml principal.
+# Il ne démarre PAS les services de l'application (postgres, redis, minio, etc.)
+# Jenkins utilise ses propres conteneurs PostgreSQL éphémères pour les tests.
+
+services:
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    container_name: collector-shop-jenkins
+    user: root  # Nécessaire pour accéder au socket Docker
+    # network_mode: host — les ports sont directement sur le host, pas de mapping nécessaire
+    # Port 8080 (Jenkins UI) et 50000 (agents) accessibles sur localhost directement
+    volumes:
+      # Persistance des données Jenkins (jobs, plugins, config, builds)
+      - jenkins_home:/var/jenkins_home
+      # Accès au daemon Docker de l'hôte (pour builder des images et lancer des conteneurs)
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Le projet monté en lecture : Jenkins le clone via file:// dans ses workspaces
+      - .:/workspace/collector-shop:ro
+      # Configuration JCasC
+      - ./jenkins/casc.yaml:/var/jenkins_home/casc_configs/casc.yaml:ro
+      # Note: gitconfig est intégré directement dans l'image (Dockerfile)
+      # Kubeconfig Minikube (pour kubectl + argocd depuis Jenkins)
+      - /home/ismail/.kube:/root/.kube:ro
+      # Certificats Minikube (référencés par le kubeconfig)
+      - /home/ismail/.minikube:/home/ismail/.minikube:ro
+      # Binaire minikube (pour minikube image load)
+      - /usr/local/bin/minikube:/usr/local/bin/minikube:ro
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false -Xmx1g -Xms512m -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true
+      - CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs
+      # Variables transmises au pipeline pour les scans
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    network_mode: host
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s  # Jenkins met ~2min à démarrer la première fois
+
+networks:
+  # Réseau pour les conteneurs de test (PostgreSQL éphémère)
+  # Jenkins utilise network_mode: host — ces conteneurs sont créés via le socket Docker
+  jenkins-ci-net:
+    name: jenkins-ci-net
+    driver: bridge
+
+volumes:
+  jenkins_home:
+    name: collector-shop-jenkins-home
+    # Pour repartir de zéro : docker volume rm collector-shop-jenkins-home

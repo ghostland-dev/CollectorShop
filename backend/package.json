@@ -32,7 +32,6 @@
     "winston": "^3.11.0",
     "minio": "^7.1.3",
     "multer": "^2.0.2",
-    "axios": "^1.6.2",
     "prom-client": "^15.1.0"
   },
   "devDependencies": {

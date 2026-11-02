@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: collector-shop
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: collector-shop-infra
+  # Finalizer : empêche la suppression accidentelle du projet
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "Projet Collector.shop — Plateforme de vente d'objets de collection"
+
+  sourceRepos:
+    - "https://github.com/Ismail-Mouyahada/CollectorShop.git"
+    - "https://github.com/Ismail-Mouyahada/CollectorShop"
+    - "http://gitea.gitea.svc.cluster.local:3000/gitea-admin/collector-shop.git"
+    - "http://gitea.gitea.svc.cluster.local:3000/*"
+
+  # Namespace de destination autorisé (dev, staging, production)
+  destinations:
+    - namespace: collector-shop
+      server: https://kubernetes.default.svc
+    - namespace: collector-shop-dev
+      server: https://kubernetes.default.svc
+    - namespace: collector-shop-staging
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+
+  # Ressources autorisées (toutes sauf celles sensibles)
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: ""
+      kind: PersistentVolume
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRole
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRoleBinding
+    - group: "storage.k8s.io"
+      kind: StorageClass
+
+  # Ressources namespace autorisées
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+
+  # Rôles projet : Jenkins peut déclencher des syncs
+  roles:
+    - name: jenkins-ci
+      description: "Compte de service Jenkins pour déclencher les syncs"
+      policies:
+        - p, proj:collector-shop:jenkins-ci, applications, sync, collector-shop/*, allow
+        - p, proj:collector-shop:jenkins-ci, applications, get, collector-shop/*, allow
+      jwtTokens:
+        # Généré via : argocd proj role create-token collector-shop jenkins-ci
+        - iat: 1700000000

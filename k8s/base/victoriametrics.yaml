@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: victoriametrics-pvc
+  namespace: collector-shop
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: victoriametrics
+  namespace: collector-shop
+  labels:
+    app: victoriametrics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: victoriametrics
+  template:
+    metadata:
+      labels:
+        app: victoriametrics
+    spec:
+      containers:
+      - name: victoriametrics
+        image: victoriametrics/victoria-metrics:latest
+        args:
+        - --storageDataPath=/victoria-metrics-data
+        - --httpListenAddr=:8428
+        - --retentionPeriod=12
+        ports:
+        - containerPort: 8428
+          name: http
+        volumeMounts:
+        - name: vm-storage
+          mountPath: /victoria-metrics-data
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8428
+          initialDelaySeconds: 20
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8428
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: vm-storage
+        persistentVolumeClaim:
+          claimName: victoriametrics-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: victoriametrics
+  namespace: collector-shop
+  labels:
+    app: victoriametrics
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8428
+    targetPort: 8428
+    protocol: TCP
+    name: http
+  selector:
+    app: victoriametrics

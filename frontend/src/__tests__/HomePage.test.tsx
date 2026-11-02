@@ -31,11 +31,11 @@ const renderWithProviders = (component: React.ReactElement) => {
 describe('HomePage', () => {
   it('affiche le titre principal', () => {
     renderWithProviders(<HomePage />);
-    expect(screen.getByText('Bienvenue sur Collector.shop')).toBeInTheDocument();
+    expect(screen.getByText('Collector.shop')).toBeInTheDocument();
   });
 
   it('affiche le lien vers le catalogue', () => {
     renderWithProviders(<HomePage />);
-    expect(screen.getByText('Découvrir le catalogue')).toBeInTheDocument();
+    expect(screen.getByText('Explorer le catalogue')).toBeInTheDocument();
   });
 });

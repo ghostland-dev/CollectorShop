@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, DeliveryStatus } from '@prisma/client';
 import { z } from 'zod';
 import { authenticate, authorize } from '../utils/auth';
 import { logger } from '../utils/logger';
-import '../types/express';
+import { logAuditSuccess, logFraudDetection, AuditAction, getAuditContext, AuditSeverity } from '../utils/audit-logger';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -93,6 +93,39 @@ async function createPurchaseWithSeller(announcementId: string, buyerId: string,
   });
 }
 
+// Helper function to handle fraud detection result
+function handleFraudDetectionResult(
+  fraudResult: { action: string; reasons: string[]; riskScore: number },
+  buyerId: string,
+  announcementId: string,
+  res: Response
+): boolean {
+  if (fraudResult.action === 'BLOCK') {
+    logger.warn('Achat bloqué par la détection de fraude', {
+      buyerId,
+      announcementId,
+      reasons: fraudResult.reasons,
+      riskScore: fraudResult.riskScore,
+    });
+    res.status(403).json({
+      error: 'Achat bloqué par la détection de fraude',
+      reasons: fraudResult.reasons,
+      riskScore: fraudResult.riskScore,
+    });
+    return false;
+  }
+
+  if (fraudResult.action === 'REVIEW') {
+    logger.warn('Achat nécessite une révision', {
+      buyerId,
+      announcementId,
+      reasons: fraudResult.reasons,
+      riskScore: fraudResult.riskScore,
+    });
+  }
+  return true;
+}
+
 // Helper function to handle purchase creation errors
 function handlePurchaseCreationError(error: unknown, res: Response): void {
   if (error instanceof z.ZodError) {
@@ -116,8 +149,9 @@ function handlePurchaseCreationError(error: unknown, res: Response): void {
   res.status(500).json({ error: 'Erreur lors de la création de l\'achat' });
 }
 
-// Créer un achat (BUYER uniquement)
-router.post('/', authenticate, authorize('BUYER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
+// Créer un achat (BUYER, SELLER ou ADMIN)
+// eslint-disable-next-line max-lines-per-function
+router.post('/', authenticate, authorize('BUYER', 'SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
     const user = req.user;
     if (!user) {
@@ -125,11 +159,54 @@ router.post('/', authenticate, authorize('BUYER', 'ADMIN'), async (req: Request,
       return;
     }
     const data = createPurchaseSchema.parse(req.body);
-
     const announcement = await validateAnnouncementForPurchase(data.announcementId, user.userId);
+
+    // Détection de fraude
+    const { detectFraudForPurchase } = await import('../services/fraud-detection.service');
+    const fraudResult = await detectFraudForPurchase(user.userId, data.announcementId, announcement.price);
+    const context = getAuditContext(req);
+
+    // 🔒 AUDIT LOG: Détection de fraude
+    if (fraudResult.riskScore > 0) {
+      logFraudDetection(
+        user.userId,
+        'Purchase',
+        data.announcementId,
+        fraudResult.reasons,
+        fraudResult.riskScore,
+        fraudResult.action
+      );
+    }
+
+    if (!handleFraudDetectionResult(fraudResult, user.userId, data.announcementId, res)) {
+      return;
+    }
+
     const purchase = await createPurchaseWithSeller(data.announcementId, user.userId, announcement.price);
 
-    logger.info('Achat créé', { purchaseId: purchase.id, announcementId: data.announcementId, buyerId: user.userId });
+    logger.info('Achat créé', {
+      purchaseId: purchase.id,
+      announcementId: data.announcementId,
+      buyerId: user.userId,
+      fraudRiskScore: fraudResult.riskScore,
+    });
+
+    // 🔒 AUDIT LOG: Création d'achat
+    logAuditSuccess(AuditAction.PURCHASE_CREATE, user.userId, {
+      userEmail: user.email,
+      userRole: user.role,
+      resourceType: 'Purchase',
+      resourceId: purchase.id,
+      details: {
+        announcementId: data.announcementId,
+        amount: announcement.price,
+        fraudRiskScore: fraudResult.riskScore,
+      },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+      severity: fraudResult.riskScore > 30 ? AuditSeverity.WARNING : AuditSeverity.INFO,
+    });
+
     res.status(201).json({ message: 'Achat créé avec succès', purchase });
   } catch (error) {
     handlePurchaseCreationError(error, res);
@@ -152,7 +229,10 @@ async function completePurchaseTransaction(purchaseId: string, announcementId: s
   return prisma.$transaction([
     prisma.purchase.update({
       where: { id: purchaseId },
-      data: { status: 'COMPLETED' },
+      data: {
+        status: 'COMPLETED',
+        deliveryStatus: 'PREPARING',
+      },
     }),
     prisma.announcement.update({
       where: { id: announcementId },
@@ -161,8 +241,8 @@ async function completePurchaseTransaction(purchaseId: string, announcementId: s
   ]);
 }
 
-// Confirmer un achat (simulation de paiement)
-router.post('/:id/confirm', authenticate, authorize('BUYER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
+// Confirmer un achat (simulation de paiement) - BUYER, SELLER ou ADMIN
+router.post('/:id/confirm', authenticate, authorize('BUYER', 'SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
     const user = req.user;
     if (!user) {
@@ -230,6 +310,215 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
   } catch (error) {
     logger.error('Erreur lors de la récupération des achats', { error });
     res.status(500).json({ error: 'Erreur lors de la récupération des achats' });
+  }
+});
+
+// Helper function to validate delivery status
+function validateDeliveryStatus(deliveryStatus: unknown): DeliveryStatus | null {
+  const validStatuses: DeliveryStatus[] = [
+    DeliveryStatus.PENDING,
+    DeliveryStatus.PREPARING,
+    DeliveryStatus.SHIPPED,
+    DeliveryStatus.IN_TRANSIT,
+    DeliveryStatus.DELIVERED,
+    DeliveryStatus.CANCELLED,
+  ];
+  if (!deliveryStatus || typeof deliveryStatus !== 'string' || !validStatuses.includes(deliveryStatus as DeliveryStatus)) {
+    return null;
+  }
+  return deliveryStatus as DeliveryStatus;
+}
+
+// Helper function to check seller authorization
+function checkSellerAuthorization(purchase: { announcement: { sellerId: string } }, userId: string, userRole: string): string | null {
+  if (purchase.announcement.sellerId !== userId && userRole !== 'ADMIN') {
+    return 'Vous n\'êtes pas autorisé à modifier le statut de livraison de cet achat';
+  }
+  return null;
+}
+
+// Helper function to build delivery status update data
+function buildDeliveryStatusUpdateData(
+  deliveryStatus: DeliveryStatus,
+  trackingNumber?: string,
+  existingShippedAt?: Date | null
+): {
+  deliveryStatus: DeliveryStatus;
+  trackingNumber?: string;
+  shippedAt?: Date;
+  deliveredAt?: Date;
+} {
+  const updateData: {
+    deliveryStatus: DeliveryStatus;
+    trackingNumber?: string;
+    shippedAt?: Date;
+    deliveredAt?: Date;
+  } = {
+    deliveryStatus,
+  };
+
+  if (trackingNumber) {
+    updateData.trackingNumber = trackingNumber;
+  }
+
+  if (deliveryStatus === 'SHIPPED' || deliveryStatus === 'IN_TRANSIT') {
+    updateData.shippedAt = new Date();
+  }
+
+  if (deliveryStatus === 'DELIVERED') {
+    updateData.deliveredAt = new Date();
+    if (!existingShippedAt) {
+      updateData.shippedAt = new Date();
+    }
+  }
+
+  return updateData;
+}
+
+// Helper function to build purchase include for delivery status update
+function buildPurchaseIncludeForDeliveryStatus() {
+  return {
+    announcement: {
+      include: {
+        seller: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    },
+    buyer: {
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    },
+  };
+}
+
+// Helper function to handle delivery status update
+async function updatePurchaseDeliveryStatus(
+  purchaseId: string,
+  deliveryStatus: DeliveryStatus,
+  trackingNumber?: string,
+  shippedAt?: Date | null
+) {
+  const updateData = buildDeliveryStatusUpdateData(deliveryStatus, trackingNumber, shippedAt);
+  return prisma.purchase.update({
+    where: { id: purchaseId },
+    data: updateData,
+    include: buildPurchaseIncludeForDeliveryStatus(),
+  });
+}
+
+// Helper function to validate and fetch purchase for delivery status update
+async function validatePurchaseForDeliveryUpdate(purchaseId: string, userId: string, userRole: string) {
+  const purchase = await prisma.purchase.findUnique({
+    where: { id: purchaseId },
+    include: { announcement: true },
+  });
+
+  if (!purchase) {
+    return { error: 'Achat introuvable', status: 404 };
+  }
+
+  const authError = checkSellerAuthorization(purchase, userId, userRole);
+  if (authError) {
+    return { error: authError, status: 403 };
+  }
+
+  return { purchase, error: null, status: null };
+}
+
+// Mettre à jour le statut de livraison (SELLER ou ADMIN uniquement)
+router.patch('/:id/delivery-status', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Non authentifié' });
+      return;
+    }
+
+    const { id } = req.params;
+    const { deliveryStatus, trackingNumber } = req.body;
+
+    const validatedStatus = validateDeliveryStatus(deliveryStatus);
+    if (!validatedStatus) {
+      res.status(400).json({ error: 'Statut de livraison invalide' });
+      return;
+    }
+
+    const validation = await validatePurchaseForDeliveryUpdate(id, user.userId, user.role);
+    if (validation.error) {
+      res.status(validation.status!).json({ error: validation.error });
+      return;
+    }
+
+    const updatedPurchase = await updatePurchaseDeliveryStatus(
+      id,
+      validatedStatus,
+      trackingNumber,
+      validation.purchase!.shippedAt
+    );
+
+    logger.info('Statut de livraison mis à jour', {
+      purchaseId: id,
+      deliveryStatus: validatedStatus,
+      updatedBy: user.userId,
+    });
+
+    res.json({ message: 'Statut de livraison mis à jour avec succès', purchase: updatedPurchase });
+  } catch (error) {
+    logger.error('Erreur lors de la mise à jour du statut de livraison', { error });
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du statut de livraison' });
+  }
+});
+
+// Récupérer les ventes de l'utilisateur connecté (pour les vendeurs)
+router.get('/sales', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: 'Non authentifié' });
+      return;
+    }
+
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        announcement: {
+          sellerId: user.userId,
+        },
+      },
+      include: {
+        announcement: {
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            images: true,
+          },
+        },
+        buyer: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ purchases });
+  } catch (error) {
+    logger.error('Erreur lors de la récupération des ventes', { error });
+    res.status(500).json({ error: 'Erreur lors de la récupération des ventes' });
   }
 });
 

@@ -193,11 +193,11 @@ export function CreateAnnouncementPage() {
               ),
             }}
           >
-            <MenuItem value="">Aucune</MenuItem>
-            <MenuItem value="Philatélie">Philatélie</MenuItem>
-            <MenuItem value="Numismatique">Numismatique</MenuItem>
-            <MenuItem value="Cartes">Cartes</MenuItem>
-            <MenuItem value="Autres">Autres</MenuItem>
+            <MenuItem value="">Aucune catégorie</MenuItem>
+            <MenuItem value="Cartes Pokémon">🃏 Cartes Pokémon</MenuItem>
+            <MenuItem value="Philatélie">📮 Philatélie</MenuItem>
+            <MenuItem value="Numismatique">🪙 Numismatique</MenuItem>
+            <MenuItem value="Autres">📦 Autres</MenuItem>
           </TextField>
           <Box sx={{ mt: 3, mb: 2 }}>
             <ImageUpload

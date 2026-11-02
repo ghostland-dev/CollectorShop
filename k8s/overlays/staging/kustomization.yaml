@@ -1,0 +1,124 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: collector-shop-staging
+
+resources:
+  - ../../base
+
+# ─── Image tags (Jenkins met à jour staging avec BUILD_NUMBER) ───────────────
+images:
+  - name: collector-shop-backend
+    newName: collector-shop-backend
+    newTag: "latest"
+  - name: collector-shop-frontend
+    newName: collector-shop-frontend
+    newTag: "latest"
+
+# ─── Patches Staging ────────────────────────────────────────────────────────
+patches:
+  - target:
+      kind: PersistentVolume
+      name: postgres-pv
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: postgres-pv-staging
+      - op: replace
+        path: /spec/hostPath/path
+        value: /data/postgres-staging
+      - op: add
+        path: /spec/claimRef
+        value:
+          name: postgres-pvc
+          namespace: collector-shop-staging
+  - target:
+      kind: PersistentVolumeClaim
+      name: postgres-pvc
+    patch: |-
+      - op: add
+        path: /spec/volumeName
+        value: postgres-pv-staging
+  - target:
+      kind: Namespace
+      name: collector-shop
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: collector-shop-staging
+      - op: add
+        path: /metadata/labels/environment
+        value: staging
+  - target:
+      kind: Deployment
+      name: backend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  - target:
+      kind: Deployment
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  # Staging utilise ClusterIP (accès via Ingress uniquement) — évite conflit NodePort
+  - target:
+      kind: Service
+      name: backend
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: ClusterIP
+      - op: remove
+        path: /spec/ports/0/nodePort
+  - target:
+      kind: Service
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: ClusterIP
+      - op: remove
+        path: /spec/ports/0/nodePort
+  - target:
+      kind: Service
+      name: grafana
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: ClusterIP
+      - op: remove
+        path: /spec/ports/0/nodePort
+  - target:
+      kind: Ingress
+      name: collector-shop-ingress
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: collector-shop-ingress-staging
+      - op: replace
+        path: /spec/tls/0/hosts
+        value:
+          - staging.shopcollector.local
+          - api-staging.shopcollector.local
+          - grafana-staging.shopcollector.local
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging.shopcollector.local
+      - op: replace
+        path: /spec/rules/1/host
+        value: api-staging.shopcollector.local
+      - op: replace
+        path: /spec/rules/2/host
+        value: grafana-staging.shopcollector.local
+
+commonLabels:
+  environment: staging

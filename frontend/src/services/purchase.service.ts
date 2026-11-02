@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { apiClient as api } from './api';
+import { apiClient } from './api';
 
 export const createPurchaseSchema = z.object({
   announcementId: z.string().uuid(),
@@ -13,6 +13,10 @@ export interface Purchase {
   buyerId: string;
   amount: number;
   status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  deliveryStatus: 'PENDING' | 'PREPARING' | 'SHIPPED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
+  trackingNumber?: string;
+  shippedAt?: string;
+  deliveredAt?: string;
   createdAt: string;
   updatedAt: string;
   announcement?: {
@@ -28,21 +32,40 @@ export interface Purchase {
       lastName: string;
     };
   };
+  buyer?: {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+  };
 }
 
 export const purchaseService = {
   create: async (data: CreatePurchaseInput): Promise<{ message: string; purchase: Purchase }> => {
-    const response = await api.post('/purchases', data);
+    const response = await apiClient.post<{ message: string; purchase: Purchase }>('/purchases', data);
     return response.data;
   },
 
   confirm: async (purchaseId: string): Promise<{ message: string; purchase: Purchase }> => {
-    const response = await api.post(`/purchases/${purchaseId}/confirm`);
+    const response = await apiClient.post<{ message: string; purchase: Purchase }>(`/purchases/${purchaseId}/confirm`);
     return response.data;
   },
 
   getMyPurchases: async (): Promise<{ purchases: Purchase[] }> => {
-    const response = await api.get('/purchases/me');
+    const response = await apiClient.get<{ purchases: Purchase[] }>('/purchases/me');
+    return response.data;
+  },
+
+  getMySales: async (): Promise<{ purchases: Purchase[] }> => {
+    const response = await apiClient.get<{ purchases: Purchase[] }>('/purchases/sales');
+    return response.data;
+  },
+
+  updateDeliveryStatus: async (
+    purchaseId: string,
+    data: { deliveryStatus: string; trackingNumber?: string }
+  ): Promise<{ message: string; purchase: Purchase }> => {
+    const response = await apiClient.patch<{ message: string; purchase: Purchase }>(`/purchases/${purchaseId}/delivery-status`, data);
     return response.data;
   },
 };

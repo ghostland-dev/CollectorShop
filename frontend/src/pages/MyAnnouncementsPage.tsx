@@ -3,13 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
-  Paper,
   Button,
-  Container,
   Grid,
   Card,
   CardContent,
-  CardMedia,
   CardActions,
   IconButton,
   Chip,
@@ -19,7 +16,6 @@ import {
   DialogContentText,
   DialogActions,
   CircularProgress,
-  Alert,
 } from '@mui/material';
 import { Edit, Delete, Add, Visibility } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -51,8 +47,7 @@ export function MyAnnouncementsPage() {
       setAnnouncementToDelete(null);
     },
     onError: (error: unknown) => {
-      const axiosError = error as { response?: { data?: { error?: string; message?: string } } };
-      const message = axiosError.response?.data?.error || axiosError.response?.data?.message || 'Erreur lors de la suppression';
+      const message = error instanceof Error ? error.message : 'Erreur lors de la suppression';
       showError(message);
     },
   });
@@ -78,75 +73,93 @@ export function MyAnnouncementsPage() {
 
   if (error) {
     return (
-      <Container maxWidth="lg">
-        <Alert severity="error" sx={{ mt: 4 }}>
-          Erreur lors du chargement de vos annonces
-        </Alert>
-      </Container>
+      <Box sx={{ mt: 4, p: 2, bgcolor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 2 }}>
+        <Typography color="error.main">Erreur lors du chargement de vos annonces</Typography>
+      </Box>
     );
   }
 
   const announcements = data?.announcements || [];
 
   return (
-    <Container maxWidth="lg">
-      <Paper sx={{ p: 4, mt: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" component="h1" fontWeight="bold">
-            {isAdmin ? 'Toutes les annonces' : 'Mes annonces'} ({announcements.length})
-          </Typography>
-          {!isAdmin && (
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => navigate('/announcements/create')}
-            >
-              Créer une annonce
-            </Button>
-          )}
-        </Box>
-
-        {announcements.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 8 }}>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              {isAdmin ? 'Aucune annonce dans le système' : 'Vous n\'avez pas encore créé d\'annonce'}
+    <Box maxWidth="lg" mx="auto">
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+            <Typography variant="h4" component="h1" fontWeight={700} sx={{ fontFamily: 'Rajdhani, sans-serif' }}>
+              Mes annonces
             </Typography>
-            {!isAdmin && (
-              <Button
-                variant="contained"
-                startIcon={<Add />}
-                onClick={() => navigate('/announcements/create')}
-                sx={{ mt: 2 }}
-              >
-                Créer votre première annonce
-              </Button>
-            )}
+            <Chip
+              label={`${announcements.length} carte${announcements.length !== 1 ? 's' : ''}`}
+              size="small"
+              sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)', fontWeight: 700 }}
+            />
           </Box>
-        ) : (
-          <AnnouncementsGrid announcements={announcements} isAdmin={isAdmin} navigate={navigate} onDeleteClick={handleDeleteClick} deleteMutation={deleteMutation} />
-        )}
-      </Paper>
+          <Typography variant="body2" color="text.secondary">
+            Gérez vos cartes Pokémon en vente
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => navigate('/announcements/create')}
+          size="large"
+        >
+          Nouvelle annonce
+        </Button>
+      </Box>
 
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Supprimer l'annonce</DialogTitle>
+      {announcements.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 12, bgcolor: 'rgba(248,250,252,0.02)', border: '1px dashed rgba(248,250,252,0.1)', borderRadius: 3 }}>
+          <Typography sx={{ fontSize: '3rem', mb: 2 }}>🃏</Typography>
+          <Typography variant="h6" fontWeight={600} gutterBottom>
+            Aucune annonce pour l'instant
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Mettez vos cartes Pokémon rares en vente dès maintenant
+          </Typography>
+          <Button variant="contained" startIcon={<Add />} onClick={() => navigate('/announcements/create')}>
+            Créer ma première annonce
+          </Button>
+        </Box>
+      ) : (
+        <AnnouncementsGrid
+          announcements={announcements}
+          isAdmin={isAdmin}
+          navigate={navigate}
+          onDeleteClick={handleDeleteClick}
+          deleteMutation={deleteMutation}
+        />
+      )}
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        PaperProps={{
+          sx: { background: '#1e293b', border: '1px solid rgba(248,250,252,0.08)' },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>
+          Supprimer l'annonce
+        </DialogTitle>
         <DialogContent>
           <DialogContentText>
             Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Annuler</Button>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)} variant="outlined">Annuler</Button>
           <Button
             onClick={handleDeleteConfirm}
-            color="error"
             variant="contained"
             disabled={deleteMutation.isPending}
+            sx={{ bgcolor: '#ef4444', '&:hover': { bgcolor: '#dc2626' } }}
           >
             {deleteMutation.isPending ? <CircularProgress size={20} /> : 'Supprimer'}
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </Box>
   );
 }
 
@@ -158,59 +171,62 @@ function AnnouncementGridCard({ announcement, isAdmin, navigate, onDeleteClick, 
   onDeleteClick: (id: string) => void;
   deleteMutation: { isPending: boolean };
 }) {
-  const getStatusColor = (status: string) => {
-    if (status === 'PUBLISHED') return 'success';
-    if (status === 'SOLD') return 'default';
-    return 'warning';
+  const statusConfig: Record<string, { label: string; color: string }> = {
+    PUBLISHED: { label: 'En vente', color: '#10b981' },
+    SOLD: { label: 'Vendu', color: '#64748b' },
+    DRAFT: { label: 'Brouillon', color: '#f59e0b' },
   };
+  const status = statusConfig[announcement.status] || statusConfig.DRAFT;
 
   return (
     <Grid item xs={12} sm={6} md={4} key={announcement.id}>
       <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        {announcement.images && announcement.images.length > 0 ? (
-          <CardMedia
-            component="img"
-            height="200"
-            image={announcement.images[0]}
-            alt={announcement.title}
-            sx={{ objectFit: 'cover' }}
-          />
-        ) : (
-          <Box
+        <Box sx={{ position: 'relative', overflow: 'hidden', bgcolor: '#0f172a', borderRadius: '10px 10px 0 0' }}>
+          {announcement.images && announcement.images.length > 0 ? (
+            <Box
+              component="img"
+              src={announcement.images[0]}
+              alt={announcement.title}
+              sx={{
+                width: '100%', height: 200, objectFit: 'contain', display: 'block',
+                p: announcement.images[0].includes('pokemontcg') ? 1 : 0,
+              }}
+            />
+          ) : (
+            <Box sx={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Typography sx={{ fontSize: '3rem' }}>🃏</Typography>
+            </Box>
+          )}
+          <Chip
+            label={status.label}
+            size="small"
             sx={{
-              height: 200,
-              bgcolor: 'grey.200',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              position: 'absolute', top: 8, right: 8,
+              bgcolor: `${status.color}20`, color: status.color,
+              border: `1px solid ${status.color}40`, fontWeight: 700, fontSize: '0.7rem',
             }}
-          >
-            <Typography color="text.secondary">Pas d'image</Typography>
-          </Box>
-        )}
-        <CardContent sx={{ flexGrow: 1 }}>
-          <Typography variant="h6" component="h2" gutterBottom noWrap>
+          />
+        </Box>
+        <CardContent sx={{ flexGrow: 1, p: 2 }}>
+          <Typography variant="subtitle1" component="h2" fontWeight={700} noWrap sx={{ fontFamily: 'Rajdhani, sans-serif', mb: 0.5 }}>
             {announcement.title}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }} noWrap>
-            {announcement.description}
-          </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-            <Typography variant="h6" color="primary">
-              {announcement.price.toFixed(2)} €
-            </Typography>
-            <Chip
-              label={announcement.status}
-              size="small"
-              color={getStatusColor(announcement.status)}
-            />
-          </Box>
           {announcement.category && (
-            <Chip label={announcement.category} size="small" sx={{ mt: 1 }} />
+            <Chip
+              label={announcement.category}
+              size="small"
+              sx={{ mb: 1, bgcolor: 'rgba(245,158,11,0.08)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.15)', fontSize: '0.68rem', height: 20 }}
+            />
           )}
+          <Typography
+            variant="h6"
+            sx={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: '#f59e0b' }}
+          >
+            {announcement.price.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+          </Typography>
           {isAdmin && announcement.seller && (
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              Vendeur: {announcement.seller.firstName || ''} {announcement.seller.lastName || ''} ({announcement.seller.email})
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              {announcement.seller.firstName} {announcement.seller.lastName}
             </Typography>
           )}
         </CardContent>
@@ -219,27 +235,26 @@ function AnnouncementGridCard({ announcement, isAdmin, navigate, onDeleteClick, 
             size="small"
             startIcon={<Visibility />}
             onClick={() => navigate(`/announcements/${announcement.id}`)}
+            sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
           >
             Voir
           </Button>
-          <Box>
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
             <IconButton
               size="small"
-              color="primary"
               onClick={() => navigate(`/announcements/${announcement.id}/edit`)}
               disabled={announcement.status === 'SOLD' && !isAdmin}
-              title={isAdmin ? 'Modifier (Admin)' : 'Modifier'}
+              sx={{ border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b', '&:hover': { bgcolor: 'rgba(245,158,11,0.08)' } }}
             >
-              <Edit />
+              <Edit fontSize="small" />
             </IconButton>
             <IconButton
               size="small"
-              color="error"
               onClick={() => onDeleteClick(announcement.id)}
               disabled={deleteMutation.isPending}
-              title={isAdmin ? 'Supprimer (Admin)' : 'Supprimer'}
+              sx={{ border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', '&:hover': { bgcolor: 'rgba(239,68,68,0.08)' } }}
             >
-              <Delete />
+              <Delete fontSize="small" />
             </IconButton>
           </Box>
         </CardActions>
@@ -271,4 +286,3 @@ function AnnouncementsGrid({ announcements, isAdmin, navigate, onDeleteClick, de
     </Grid>
   );
 }
-

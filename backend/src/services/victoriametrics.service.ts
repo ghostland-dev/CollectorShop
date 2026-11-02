@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { metricsService } from './metrics.service';
 import { logger } from '../utils/logger';
 
@@ -10,7 +9,7 @@ class VictoriaMetricsService {
   constructor() {
     this.url = process.env.VICTORIAMETRICS_URL || 'http://localhost:8428/api/v1/import/prometheus';
     this.enabled = !!process.env.VICTORIAMETRICS_URL;
-    
+
     if (this.enabled) {
       this.startPushing();
       logger.info('VictoriaMetrics service initialized', { url: this.url });
@@ -22,12 +21,19 @@ class VictoriaMetricsService {
   private async pushMetrics(): Promise<void> {
     try {
       const metrics = await metricsService.getMetrics();
-      await axios.post(this.url, metrics, {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      await fetch(this.url, {
+        method: 'POST',
         headers: {
           'Content-Type': 'text/plain',
         },
-        timeout: 5000,
+        body: metrics,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
     } catch (error) {
       logger.error('Erreur lors du push des métriques vers VictoriaMetrics', { error });
     }

@@ -7,6 +7,7 @@ import App from './App';
 import { theme } from './theme';
 import { NotificationProvider } from './components/NotificationProvider';
 import { useAuthInit } from './hooks/useAuthInit';
+import './i18n/config';
 import './index.css';
 import './styles/globals.css';
 

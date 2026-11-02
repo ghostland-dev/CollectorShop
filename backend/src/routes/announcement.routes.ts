@@ -3,7 +3,8 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { authenticate, authorize } from '../utils/auth';
 import { logger } from '../utils/logger';
-import '../types/express';
+import { moderateAnnouncement, validateImages } from '../services/moderation.service';
+import { logAuditSuccess, logModerationReject, AuditAction, getAuditContext } from '../utils/audit-logger';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -113,11 +114,11 @@ function handleUserNotFoundError(res: Response): boolean {
 
 // Helper function to handle Prisma P2003 error
 function handlePrismaP2003Error(error: { code: string; meta?: unknown }, userId: string, res: Response): boolean {
-  logger.error('Erreur de référence: utilisateur invalide', { 
+  logger.error('Erreur de référence: utilisateur invalide', {
     userId,
     error: error.meta
   });
-  res.status(400).json({ 
+  res.status(400).json({
     error: 'Erreur de référence: votre compte utilisateur n\'existe plus. Veuillez vous reconnecter.',
     code: 'USER_NOT_FOUND'
   });
@@ -126,12 +127,12 @@ function handlePrismaP2003Error(error: { code: string; meta?: unknown }, userId:
 
 // Helper function to handle generic errors
 function handleGenericError(error: unknown, userId: string, res: Response): void {
-  logger.error('Erreur lors de la création de l\'annonce', { 
+  logger.error('Erreur lors de la création de l\'annonce', {
     error: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
     userId
   });
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Erreur lors de la création de l\'annonce',
     message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
   });
@@ -140,7 +141,7 @@ function handleGenericError(error: unknown, userId: string, res: Response): void
 // Helper function to handle announcement creation errors
 function handleAnnouncementCreationError(error: unknown, userId: string | undefined, res: Response): void {
   const userIdValue = userId || 'unknown';
-  
+
   if (error instanceof z.ZodError) {
     handleZodError(error, res);
     return;
@@ -176,6 +177,65 @@ async function createAnnouncementWithSeller(
   });
 }
 
+// Helper function to validate images
+function validateImageUrls(images: string[] | undefined, res: Response): boolean {
+  const imageValidation = validateImages(images || []);
+  if (!imageValidation.valid) {
+    res.status(400).json({
+      error: 'URLs d\'images invalides',
+      invalidUrls: imageValidation.invalidUrls,
+    });
+    return false;
+  }
+  return true;
+}
+
+// Helper function to run moderation check
+async function runModerationCheck(
+  userId: string,
+  data: { title: string; description: string; price: number; category?: string | null },
+  res: Response
+): Promise<{ approved: boolean; score: number; reasons: string[] } | null> {
+  const existingTitles = await prisma.announcement.findMany({
+    where: { sellerId: userId },
+    select: { title: true },
+  });
+
+  const moderationResult = await moderateAnnouncement({
+    title: data.title,
+    description: data.description,
+    price: data.price,
+    category: data.category,
+    existingTitles: existingTitles.map((a) => a.title),
+  });
+
+  if (!moderationResult.approved) {
+    logger.warn('Annonce rejetée par la modération automatique', {
+      sellerId: userId,
+      reasons: moderationResult.reasons,
+      score: moderationResult.score,
+    });
+
+    // 🔒 AUDIT LOG: Rejet par modération
+    logModerationReject(
+      userId,
+      'Announcement',
+      'pending',
+      moderationResult.reasons,
+      moderationResult.score
+    );
+
+    res.status(400).json({
+      error: 'Annonce rejetée par la modération automatique',
+      reasons: moderationResult.reasons,
+      score: moderationResult.score,
+    });
+    return null;
+  }
+
+  return moderationResult;
+}
+
 // Créer une annonce (SELLER uniquement)
 router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -185,10 +245,42 @@ router.post('/', authenticate, authorize('SELLER', 'ADMIN'), async (req: Request
       return;
     }
     const data = createAnnouncementSchema.parse(req.body);
+
+    if (!validateImageUrls(data.images, res)) {
+      return;
+    }
+
+    const moderationResult = await runModerationCheck(user.userId, data, res);
+    if (!moderationResult) {
+      return;
+    }
+
     const announcementData = await createAnnouncementData(user.userId, data);
     const announcement = await createAnnouncementWithSeller(announcementData);
+    const context = getAuditContext(req);
 
-    logger.info('Annonce créée', { announcementId: announcement.id, sellerId: user.userId });
+    logger.info('Annonce créée', {
+      announcementId: announcement.id,
+      sellerId: user.userId,
+      moderationScore: moderationResult.score,
+    });
+
+    // 🔒 AUDIT LOG: Création d'annonce
+    logAuditSuccess(AuditAction.ANNOUNCEMENT_CREATE, user.userId, {
+      userEmail: user.email,
+      userRole: user.role,
+      resourceType: 'Announcement',
+      resourceId: announcement.id,
+      details: {
+        title: data.title,
+        price: data.price,
+        category: data.category,
+        moderationScore: moderationResult.score,
+      },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+    });
+
     res.status(201).json({ message: 'Annonce créée avec succès', announcement });
   } catch (error) {
     handleAnnouncementCreationError(error, req.user?.userId, res);
@@ -207,6 +299,14 @@ async function fetchAnnouncementsWithPagination(where: Prisma.AnnouncementWhereI
             email: true,
             firstName: true,
             lastName: true,
+            shop: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                logo: true,
+              }
+            }
           }
         }
       },
@@ -222,7 +322,7 @@ async function fetchAnnouncementsWithPagination(where: Prisma.AnnouncementWhereI
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { category, minPrice, maxPrice, search, page = '1', limit = '20' } = req.query;
-    
+
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
@@ -243,11 +343,11 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       limit: limitNum,
     });
   } catch (error) {
-    logger.error('Erreur lors de la récupération des annonces', { 
+    logger.error('Erreur lors de la récupération des annonces', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Erreur lors de la récupération des annonces',
       message: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
     });
@@ -276,6 +376,14 @@ router.get('/me', authenticate, authorize('SELLER', 'ADMIN'), async (req: Reques
             email: true,
             firstName: true,
             lastName: true,
+            shop: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                logo: true,
+              }
+            }
           }
         }
       },
@@ -303,6 +411,14 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
             email: true,
             firstName: true,
             lastName: true,
+            shop: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                logo: true,
+              }
+            }
           }
         }
       }

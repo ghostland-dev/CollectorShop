@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: collector-shop
+  labels:
+    name: collector-shop
+    environment: dev

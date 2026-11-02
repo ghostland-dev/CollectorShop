@@ -1,0 +1,37 @@
+# Jenkins Plugins - Collector.shop CI/CD Local
+# Format: plugin-id ou plugin-id:version
+# Les dépendances transitives sont résolues automatiquement
+
+# Pipeline & Workflow
+workflow-aggregator
+pipeline-stage-view
+pipeline-graph-view
+
+# Gestion du code source
+git
+github
+
+# Docker
+docker-workflow
+docker-plugin
+
+# Configuration as Code (JCasC)
+configuration-as-code
+
+# Job DSL (création automatique de jobs via JCasC)
+job-dsl
+
+# Interface utilisateur & Rapports
+ansicolor
+timestamper
+htmlpublisher
+build-monitor-plugin
+
+# Utilitaires
+ws-cleanup
+credentials-binding
+ssh-credentials
+plain-credentials
+
+# Notifications & Métriques
+prometheus

@@ -1,0 +1,31 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ['--allow-multiple-documents']
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+
+  - repo: local
+    hooks:
+      - id: eslint-frontend
+        name: ESLint Frontend
+        language: system
+        entry: bash -c 'cd frontend && npm run lint'
+        types: [file]
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: tsc-frontend
+        name: TypeScript Check Frontend
+        language: system
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        types: [file]
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false

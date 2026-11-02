@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -26,6 +27,15 @@ enum AnnouncementStatus {
   ARCHIVED
 }
 
+enum DeliveryStatus {
+  PENDING
+  PREPARING
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
 model User {
   id            String         @id @default(uuid())
   email         String         @unique
@@ -35,36 +45,115 @@ model User {
   role          Role           @default(BUYER)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  shop          Shop?
   announcements Announcement[]
   purchases     Purchase[]
+  sentMessages  Message[]      @relation("MessageSender")
+  receivedMessages Message[]   @relation("MessageReceiver")
+  conversationsAsUser1 Conversation[] @relation("User1")
+  conversationsAsUser2 Conversation[] @relation("User2")
+}
+
+model Shop {
+  id          String         @id @default(uuid())
+  name        String
+  description String?
+  userId      String         @unique
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logo        String?
+  bannerImage String?
+  collections Collection[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model Collection {
+  id          String         @id @default(uuid())
+  name        String
+  description String?
+  shopId      String
+  shop        Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  image       String?
+  announcements Announcement[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([shopId])
 }
 
 model Announcement {
-  id          String             @id @default(uuid())
-  title       String
-  description String
-  price       Float
-  status      AnnouncementStatus @default(DRAFT)
-  sellerId    String
-  seller      User               @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  category    String?
-  images      String[]           @default([])
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  purchases   Purchase[]
+  id            String             @id @default(uuid())
+  title         String
+  description   String
+  price         Float
+  status        AnnouncementStatus @default(DRAFT)
+  sellerId      String
+  seller        User               @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  collectionId  String?
+  collection    Collection?        @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  category      String?
+  images        String[]           @default([])
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  purchases     Purchase[]
+  conversations Conversation[]
+
+  @@index([collectionId])
 }
 
 model Purchase {
-  id             String       @id @default(uuid())
+  id             String         @id @default(uuid())
   announcementId String
-  announcement   Announcement @relation(fields: [announcementId], references: [id])
+  announcement   Announcement   @relation(fields: [announcementId], references: [id])
   buyerId        String
-  buyer          User         @relation(fields: [buyerId], references: [id])
+  buyer          User           @relation(fields: [buyerId], references: [id])
   amount         Float
-  status         String       @default("PENDING")
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  status         String         @default("PENDING")
+  deliveryStatus DeliveryStatus @default(PENDING)
+  trackingNumber String?
+  shippedAt      DateTime?
+  deliveredAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@index([buyerId])
   @@index([announcementId])
+  @@index([deliveryStatus])
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  user1Id   String
+  user1     User      @relation("User1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id   String
+  user2     User      @relation("User2", fields: [user2Id], references: [id], onDelete: Cascade)
+  announcementId String?
+  announcement   Announcement? @relation(fields: [announcementId], references: [id], onDelete: SetNull)
+  lastMessageAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  @@unique([user1Id, user2Id, announcementId])
+  @@index([user1Id])
+  @@index([user2Id])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId     String
+  receiver       User         @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  content        String
+  read           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
 }

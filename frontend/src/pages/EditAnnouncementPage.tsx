@@ -241,4 +241,3 @@ export function EditAnnouncementPage() {
     </Container>
   );
 }
-

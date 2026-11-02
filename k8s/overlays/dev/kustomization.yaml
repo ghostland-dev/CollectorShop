@@ -1,0 +1,124 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: collector-shop-dev
+
+resources:
+  - ../../base
+
+# ─── Image tags (Jenkins met à jour dev avec BUILD_NUMBER) ───────────────────
+images:
+  - name: collector-shop-backend
+    newName: collector-shop-backend
+    newTag: "latest"
+  - name: collector-shop-frontend
+    newName: collector-shop-frontend
+    newTag: "latest"
+
+# ─── Patches Dev ────────────────────────────────────────────────────────────
+patches:
+  - target:
+      kind: PersistentVolume
+      name: postgres-pv
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: postgres-pv-dev
+      - op: replace
+        path: /spec/hostPath/path
+        value: /data/postgres-dev
+      - op: add
+        path: /spec/claimRef
+        value:
+          name: postgres-pvc
+          namespace: collector-shop-dev
+  - target:
+      kind: PersistentVolumeClaim
+      name: postgres-pvc
+    patch: |-
+      - op: add
+        path: /spec/volumeName
+        value: postgres-pv-dev
+  - target:
+      kind: Namespace
+      name: collector-shop
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: collector-shop-dev
+      - op: add
+        path: /metadata/labels/environment
+        value: dev
+  - target:
+      kind: Deployment
+      name: backend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: Deployment
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  # Dev utilise ClusterIP (accès via Ingress uniquement) — évite conflit NodePort
+  - target:
+      kind: Service
+      name: backend
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: ClusterIP
+      - op: remove
+        path: /spec/ports/0/nodePort
+  - target:
+      kind: Service
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: ClusterIP
+      - op: remove
+        path: /spec/ports/0/nodePort
+  - target:
+      kind: Service
+      name: grafana
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: ClusterIP
+      - op: remove
+        path: /spec/ports/0/nodePort
+  - target:
+      kind: Ingress
+      name: collector-shop-ingress
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: collector-shop-ingress-dev
+      - op: replace
+        path: /spec/tls/0/hosts
+        value:
+          - dev.shopcollector.local
+          - api-dev.shopcollector.local
+          - grafana-dev.shopcollector.local
+      - op: replace
+        path: /spec/rules/0/host
+        value: dev.shopcollector.local
+      - op: replace
+        path: /spec/rules/1/host
+        value: api-dev.shopcollector.local
+      - op: replace
+        path: /spec/rules/2/host
+        value: grafana-dev.shopcollector.local
+
+commonLabels:
+  environment: dev

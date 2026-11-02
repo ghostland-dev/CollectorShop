@@ -1,0 +1,85 @@
+config:
+  target: "http://localhost:5000"
+  phases:
+    - duration: 60
+      arrivalRate: 0.5
+      name: "Montée à 25 utilisateurs"
+    - duration: 120
+      arrivalRate: 0.5
+      name: "Maintien à 25"
+    - duration: 60
+      arrivalRate: 1
+      name: "Montée à 50 utilisateurs"
+    - duration: 180
+      arrivalRate: 1
+      name: "Maintien à 50"
+    - duration: 60
+      arrivalRate: 2
+      name: "Montée à 100 utilisateurs"
+    - duration: 180
+      arrivalRate: 2
+      name: "Maintien à 100"
+    - duration: 60
+      arrivalRate: 3
+      name: "Pic à 150 utilisateurs"
+    - duration: 120
+      arrivalRate: 3
+      name: "Maintien du pic"
+    - duration: 120
+      arrivalRate: 0
+      name: "Descente"
+  processor: "./load-test.ts"
+  variables:
+    baseUrl: "http://localhost:5000/api"
+  plugins:
+    expect: {}
+  ensure:
+    p95: 200
+    p99: 500
+    maxErrorRate: 0.01
+
+scenarios:
+  - name: "Test de charge - Catalogue"
+    weight: 40
+    flow:
+      - get:
+          url: "{{ baseUrl }}/announcements"
+          params:
+            limit: 20
+          capture:
+            - json: "$.announcements[0].id"
+              as: "announcementId"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: announcements
+      - think: 1
+      - get:
+          url: "{{ baseUrl }}/announcements/{{ announcementId }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+      - think: 1
+
+  - name: "Test de charge - Recherche"
+    weight: 30
+    flow:
+      - get:
+          url: "{{ baseUrl }}/announcements"
+          params:
+            search: "timbre"
+            limit: 10
+          expect:
+            - statusCode: 200
+            - contentType: json
+      - think: 1
+
+  - name: "Test de charge - Scénario complet"
+    weight: 30
+    flow:
+      - function: "getCatalog"
+      - think: 1
+      - function: "getAnnouncement"
+      - think: 1
+      - function: "searchCatalog"
+      - think: 1

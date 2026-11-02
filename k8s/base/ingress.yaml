@@ -1,0 +1,68 @@
+---
+# Ingress HTTPS — Collector.shop
+# Nginx Ingress Controller (NodePort HTTPS : 32390)
+# Accès : https://<domaine>:32390 (ou https://<domaine> avec minikube tunnel)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: collector-shop-ingress
+  namespace: collector-shop
+  labels:
+    app.kubernetes.io/part-of: collector-shop
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    # CORS pour l'API
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://shopcollector.local,https://shopcollector.local:32390"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization, Content-Type, Accept"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - shopcollector.local
+        - api.shopcollector.local
+        - grafana.shopcollector.local
+      secretName: shopcollector-tls
+  rules:
+    # ─── Frontend ───────────────────────────────────────────────────────────
+    - host: shopcollector.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+
+    # ─── Backend API ─────────────────────────────────────────────────────────
+    - host: api.shopcollector.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 5000
+
+    # ─── Grafana ─────────────────────────────────────────────────────────────
+    - host: grafana.shopcollector.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000

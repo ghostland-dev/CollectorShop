@@ -14,12 +14,12 @@
   --color-primary: #667eea;
   --color-primary-light: #9aa7f5;
   --color-primary-dark: #4c63d2;
-  
+
   /* Colors - Secondary Palette */
   --color-secondary: #764ba2;
   --color-secondary-light: #a678c4;
   --color-secondary-dark: #5a3780;
-  
+
   /* Colors - Neutral */
   --color-white: #ffffff;
   --color-black: #000000;
@@ -33,13 +33,13 @@
   --color-gray-700: #374151;
   --color-gray-800: #1f2937;
   --color-gray-900: #111827;
-  
+
   /* Colors - Semantic */
   --color-success: #10b981;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
   --color-info: #3b82f6;
-  
+
   /* Spacing - Consistent scale */
   --spacing-xs: 0.25rem;   /* 4px */
   --spacing-sm: 0.5rem;    /* 8px */
@@ -48,12 +48,12 @@
   --spacing-xl: 2rem;      /* 32px */
   --spacing-2xl: 3rem;     /* 48px */
   --spacing-3xl: 4rem;     /* 64px */
-  
+
   /* Typography */
   --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   --font-family-mono: 'Courier New', monospace;
-  
+
   --font-size-xs: 0.75rem;    /* 12px */
   --font-size-sm: 0.875rem;   /* 14px */
   --font-size-base: 1rem;     /* 16px */
@@ -62,30 +62,30 @@
   --font-size-2xl: 1.5rem;    /* 24px */
   --font-size-3xl: 1.875rem;  /* 30px */
   --font-size-4xl: 2.25rem;   /* 36px */
-  
+
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  
+
   /* Border Radius */
   --radius-sm: 0.25rem;   /* 4px */
   --radius-md: 0.5rem;    /* 8px */
   --radius-lg: 0.75rem;   /* 12px */
   --radius-xl: 1rem;      /* 16px */
   --radius-full: 9999px;
-  
+
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  
+
   /* Transitions */
   --transition-fast: 150ms ease-in-out;
   --transition-base: 200ms ease-in-out;
   --transition-slow: 300ms ease-in-out;
-  
+
   /* Z-index scale */
   --z-dropdown: 1000;
   --z-sticky: 1020;
@@ -437,4 +437,117 @@ code {
   .hidden-lg {
     display: none;
   }
+}
+
+/* ============================================
+   ACCESSIBILITY (A11Y) IMPROVEMENTS
+   ============================================ */
+
+/* Screen reader only - pour le contenu accessible uniquement aux lecteurs d'écran */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus visible pour la navigation au clavier - Améliore la visibilité du focus */
+*:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Amélioration du contraste pour les liens */
+a {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+a:focus {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Skip to main content link - Permet de sauter la navigation */
+.skip-to-main {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #1976d2;
+  color: white;
+  padding: 8px 16px;
+  text-decoration: none;
+  z-index: 100;
+  border-radius: 0 0 4px 0;
+  font-weight: 600;
+}
+
+.skip-to-main:focus {
+  top: 0;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Amélioration du contraste pour les boutons */
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+}
+
+/* Amélioration de la visibilité des erreurs de formulaire */
+[aria-invalid="true"] {
+  border-color: #ef4444;
+}
+
+[aria-invalid="true"]:focus {
+  outline-color: #ef4444;
+}
+
+/* Amélioration de la visibilité des éléments désactivés */
+[aria-disabled="true"],
+:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Amélioration de la navigation au clavier pour les listes */
+[role="list"] li:focus {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Amélioration de la visibilité des alertes */
+[role="alert"],
+[role="status"] {
+  padding: 12px;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+/* Amélioration du contraste pour les textes secondaires */
+.text-secondary,
+.text-muted {
+  color: #4b5563;
+}
+
+/* Amélioration de la visibilité des landmarks ARIA */
+[role="banner"],
+[role="main"],
+[role="complementary"],
+[role="contentinfo"],
+[role="navigation"] {
+  position: relative;
 }

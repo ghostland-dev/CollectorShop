@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, ApiError } from './api';
 import { z } from 'zod';
 
 export const createAnnouncementSchema = z.object({
@@ -27,6 +27,12 @@ export interface Announcement {
     email: string;
     firstName?: string;
     lastName?: string;
+    shop?: {
+      id: string;
+      name: string;
+      description?: string;
+      logo?: string;
+    };
   };
 }
 
@@ -46,32 +52,22 @@ export const announcementService = {
   }): Promise<AnnouncementsResponse> => {
     try {
       const response = await apiClient.get<AnnouncementsResponse>('/announcements', { params });
-      
+
       // Vérifier que la réponse a le bon format
       if (!response.data || !Array.isArray(response.data.announcements)) {
         console.error('Format de réponse invalide:', response.data);
         throw new Error('Format de réponse invalide de l\'API');
       }
-      
+
       return response.data;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erreur lors de la récupération des annonces:', error);
-      
-      let message = 'Erreur lors du chargement des annonces';
-      
-      if (error.response) {
-        // Erreur avec réponse du serveur
-        message = error.response.data?.error || error.response.data?.message || `Erreur ${error.response.status}`;
-      } else if (error.request) {
-        // Requête envoyée mais pas de réponse
-        message = 'Impossible de se connecter au serveur. Vérifiez que le backend est démarré.';
-      } else {
-        // Erreur lors de la configuration de la requête
-        message = error.message || message;
+
+      if (error instanceof ApiError) {
+        throw error;
       }
-      
-      throw new Error(message);
+
+      throw new Error(error instanceof Error ? error.message : 'Erreur lors du chargement des annonces');
     }
   },
 

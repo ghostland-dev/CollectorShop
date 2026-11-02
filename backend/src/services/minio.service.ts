@@ -61,10 +61,10 @@ class MinioService {
       };
 
       await this.client.putObject(this.bucketName, fileName, file.buffer, file.size, metaData);
-      
+
       const url = `${this.publicUrl}/${this.bucketName}/${fileName}`;
       logger.info(`Fichier uploadé: ${fileName}`);
-      
+
       return url;
     } catch (error) {
       logger.error('Erreur lors de l\'upload du fichier', { error });

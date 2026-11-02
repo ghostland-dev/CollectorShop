@@ -6,6 +6,8 @@ node_modules/
 # Testing
 coverage/
 .nyc_output/
+tests/**/report.json
+tests/**/*.html
 
 # Production
 build/
@@ -43,3 +45,8 @@ docker-compose.override.yml
 
 # Prisma
 backend/prisma/migrations/
+locust-test_exceptions.csv
+locust-test_failures.csv
+locust-test_stats_history.csv
+locust-test_stats.csv
+locust-test.html
