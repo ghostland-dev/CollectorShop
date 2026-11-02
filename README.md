@@ -972,3 +972,10 @@ Voir aussi : `.github/workflows/ci-cd.yml` (pipeline GitHub Actions secondaire)
 ## Installation et déploiement
 
 Voir `INSTALLATION.md` pour les instructions détaillées.
+
+## Author
+
+**Ismail.M**, Software Engineer & DevOps
+
+- GitHub: [@ghostland-dev](https://github.com/ghostland-dev)
+- Website: [ismail-mouyahada.com](https://www.ismail-mouyahada.com)
